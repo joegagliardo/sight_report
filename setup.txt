@@ -1,0 +1,187 @@
+1. Setup github session in your terminalgit config --global user.email "you.email" 
+git config --global user.name "github.user"
+git config credential.helper cache
+
+2. git clone https://github.com/joegagliardo/vibe-template.git
+
+3. change to the folder name to whatever you want and change to that folder
+
+4. # For Windows
+git config --global core.editor "notepad" 
+# Mac & Linux
+git config --global core.editor "nano" 
+
+5. git config --global --edit
+  add these lines if you want the shortcuts:
+
+[alias]
+    deploy = !git tag \"$(git log -1 --pretty=%B | head -n 1 | tr \" \" \"-$
+    latest = !git fetch origin -q && git log -1 origin/main --pretty=%B
+
+6. make your own git repo on github.com
+
+7. # For Windows
+git-new-push.bat <github-username> <repo-name>
+# Mac & Linux
+git-new-push.sh <github-username> <repo-name>
+
+8. Check to make sure that the files are on your github page
+
+9. make sure you are logged in with your gcloud credentials and set the application default credentials with:
+gcloud auth login --update-adc
+
+10. create a virtual environment, I use Python 3.11 for Cloud Run
+python -m venv .venv
+# activates the virtual environment
+# Windows
+.venv\Scripts\activate.bat
+# Mac & Linux
+source .venv/bin/activate
+
+11. Choose the venv in your Antigravity IDE and choose the model to use for Code Assist
+
+12. Setup a build trigger:
+gcloud beta builds triggers create github \
+    --name="deploy-on-tag-suffix" \
+    --repo-owner="" \
+    --repo-name="" \
+    --tag-pattern=".*-deploy$" \
+    --build-config="cloudbuild.yaml" \
+    --region="global"
+
+    modify the create-build-trigger script for your OS to have your info
+
+
+## 1. Local Setup
+# Install dependencies
+pip install -r requirements.txt
+
+# Run locally (Requires Google Application Credentials for surfn-peru project)
+python app.py
+
+## 2. Infrastructure Setup (One-time)
+# Create Firestore database (done)
+# gcloud firestore databases create --project=surfn-peru --location=us-central1 --type=firestore-native --database=expenses
+
+## 3. Deploy to Cloud Run
+
+### Option A: All-in-one command (Builds, Pushes, and Deploys)
+# This is the easiest way. It uses Cloud Build and Container Registry automatically.
+gcloud run deploy expenses-app \
+    --source . \
+    --project=surfn-peru \
+    --region=us-central1 \
+    --allow-unauthenticated \
+    --service-account=expenses-runner@surfn-peru.iam.gserviceaccount.com
+
+### Option B: Manual Build, Push, and Deploy
+# 1. Build and push the image to Artifact Registry/Container Registry
+gcloud builds submit --tag gcr.io/surfn-peru/expenses-app --project=surfn-peru
+
+### Option C: Automated Build Trigger (CD)
+# Automatically builds and deploys when you push a tag like 'v1.0.99' to GitHub.
+
+# 1. Prerequisites (GCP Console Handshake)
+# Unfortunately, GitHub OAuth authorization MUST be done via browser once:
+# Go to: https://console.cloud.google.com/cloud-build/triggers
+# Click "Manage Repositories" -> "Connect Repository" -> "GitHub App (1st gen)".
+# Authorize the app and select 'bwallerperu/expenses'.
+
+# 2. Configure IAM Permissions (Terminal)
+# Set project and grant Cloud Build the roles to deploy to Cloud Run.
+gcloud config set project surfn-peru
+PROJECT_NUMBER=$(gcloud projects describe surfn-peru --format='get(projectNumber)')
+CB_SA="${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com"
+
+gcloud projects add-iam-policy-binding surfn-peru --member="serviceAccount:${CB_SA}" --role="roles/run.admin" --condition=None
+gcloud projects add-iam-policy-binding surfn-peru --member="serviceAccount:${CB_SA}" --role="roles/iam.serviceAccountUser" --condition=None
+
+
+# 3. Create the Trigger (Terminal)
+# This trigger fires on every push to 'main', but only deploys if '[deploy]' is in the commit message.
+gcloud beta builds triggers create github \
+    --name="deploy-on-commit-msg" \
+    --repo-owner="bwallerperu" \
+    --repo-name="expenses" \
+    --branch-pattern="^main$" \
+    --region="global" \
+    --build-config="cloudbuild.yaml"
+
+# 4. Create the Service Account (Terminal)
+gcloud iam service-accounts create expenses-runner \
+    --display-name="Expenses App Runner" \
+    --project=surfn-peru
+
+# Allow Cloud Build to act as this service account
+gcloud iam service-accounts add-iam-policy-binding \
+    expenses-runner@surfn-peru.iam.gserviceaccount.com \
+    --member="serviceAccount:1087744597190@cloudbuild.gserviceaccount.com" \
+    --role="roles/iam.serviceAccountUser" \
+    --project=surfn-peru
+
+# Grant Cloud Run Admin to Cloud Build
+gcloud projects add-iam-policy-binding surfn-peru \
+    --member="serviceAccount:1087744597190@cloudbuild.gserviceaccount.com" \
+    --role="roles/run.admin" \
+    --condition=None
+
+# !!! CRITICAL: Grant Firestore permissions to the Runner service account !!!
+gcloud projects add-iam-policy-binding surfn-peru \
+    --member="serviceAccount:expenses-runner@surfn-peru.iam.gserviceaccount.com" \
+    --role="roles/datastore.user" \
+    --condition=None \
+    --project=surfn-peru
+
+# 4. Trigger Deployment (Terminal)
+git add .
+git commit -am "Your update message [deploy]"
+git push origin main
+
+# Note: If you omit '[deploy]', Cloud Build will still build the image but SKIP the deployment.
+
+## 4. Firestore Composite Indexes
+# Run these to enable advanced filtering and sorting (takes a few minutes to build)
+
+# Index for: User + Date Sort
+gcloud firestore indexes composite create --project=surfn-peru --database=expenses --collection-group=expenses --field-config=field-path=ejecutivo,order=ascending --field-config=field-path=fecha,order=descending
+
+# Index for: User + Category + Date Sort
+gcloud firestore indexes composite create --project=surfn-peru --database=expenses --collection-group=expenses --field-config=field-path=ejecutivo,order=ascending --field-config=field-path=categoria,order=ascending --field-config=field-path=fecha,order=descending
+
+# Index for: User + Client + Date Sort
+gcloud firestore indexes composite create --project=surfn-peru --database=expenses --collection-group=expenses --field-config=field-path=ejecutivo,order=ascending --field-config=field-path=cliente,order=ascending --field-config=field-path=fecha,order=descending
+
+# Index for: Category + Date Sort (Admin View)
+gcloud firestore indexes composite create --project=surfn-peru --database=expenses --collection-group=expenses --field-config=field-path=categoria,order=ascending --field-config=field-path=fecha,order=descending
+
+# Index for: Client + Date Sort (Admin View)
+gcloud firestore indexes composite create --project=surfn-peru --database=expenses --collection-group=expenses --field-config=field-path=cliente,order=ascending --field-config=field-path=fecha,order=descending
+
+# This updates the build triggers
+gcloud alpha builds triggers import --source=trigger.yaml --region=global
+
+
+
+
+PROJECT_NUMBER=$(gcloud projects describe surfn-peru --format='get(projectNumber)')
+
+# 1. Give Cloud Build permission to manage Cloud Run
+gcloud projects add-iam-policy-binding surfn-peru \
+  --member="serviceAccount:${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com" \
+  --role="roles/run.admin" --condition=None
+
+# 2. Give Cloud Build permission to "ActAs" your runner account
+gcloud iam service-accounts add-iam-policy-binding expenses-runner@surfn-peru.iam.gserviceaccount.com \
+  --member="serviceAccount:${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com" \
+  --role="roles/iam.serviceAccountUser" --condition=None
+
+
+
+#Can you build me the Gcloud command set to create a bigquery data set called "gastos-rep" in the US-Multiregion with a create table command with the same firestore structure
+bq mk --location=US --dataset gastos-rep
+bq mk --table \
+  --description "Table for Firestore expenses" \
+  gastos-rep.transacciones \
+  categoria:STRING,cliente:STRING,descripcion:STRING,ejecutivo:STRING,establecimiento:STRING,fecha:DATE,moneda:STRING,monto:INT64,reportado_en:TIMESTAMP
+
+

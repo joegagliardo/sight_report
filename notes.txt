@@ -1,0 +1,20 @@
+Here are the setup steps you need to complete in Airtable, along with a sample ADK agent designed to read from the "S.I.G.H.T. Reports" table.
+
+1. Airtable Setup Steps
+To securely access Airtable data via their API, you need to create a Personal Access Token and find your Base ID.
+
+Step 1: Create a Personal Access Token (PAT)
+
+Log in to your Airtable account.
+Click your profile picture in the top right and select Developer Hub.
+Under the Personal access tokens tab, click Create new token.
+Give your token a name (e.g., "ADK SIGHT Reader").
+Under Scopes, add the following permissions:
+data.records:read (Required to view the table data)
+Under Access, select the specific base that contains your "S.I.G.H.T. Reports" table, or select "All current and future bases in this workspace" if you prefer.
+Click Create token and copy the token. Save this somewhere secure (e.g., in a .env file as AIRTABLE_API_KEY).
+Step 2: Get Your Base ID
+
+Open the Airtable base that contains the "S.I.G.H.T. Reports" table in your browser.
+Look at the URL in your browser's address bar. It will look something like this: https://airtable.com/appXXXXXXXXXXXXXX/tblYYYYYYYYYYYYYY/viwZZZZZZZZZZZZZZ
+Copy the string that starts with app (e.g., appXXXXXXXXXXXXXX). This is your Base ID. Save this (e.g., in a .env file as AIRTABLE_BASE_ID).

@@ -1,0 +1,27 @@
+.gcloudignore
+.git
+.gitignore
+.venv
+.python_version
+*.pyc
+__pycache__
+.DS_Store
+
+# Include ignore rules from .gitignore
+#!include:.gitignore
+
+# Exclude local ADK session state
+.adk/
+*/.adk/
+
+# Exclude sensitive environment variables
+.env
+*/.env
+
+# Exclude logs and history
+PROMPT_HISTORY.log
+*.log
+
+# Exclude large development artifacts
+artifacts/
+brain/

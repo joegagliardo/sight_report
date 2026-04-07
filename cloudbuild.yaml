@@ -1,0 +1,33 @@
+steps:
+  # 1. Build the container image
+  - name: 'gcr.io/cloud-builders/docker'
+    env:
+      - 'DOCKER_BUILDKIT=0' 
+    args: 
+      - 'build'
+      - '-t'
+      - 'us-central1-docker.pkg.dev/roitraining-dashboard/sight-report/sight-report:${_IMAGE_TAG}'
+      - '.'
+
+  # 2. Push the image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'us-central1-docker.pkg.dev/roitraining-dashboard/sight-report/sight-report:${_IMAGE_TAG}']
+
+  # 3. Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'sight-report'
+      - '--image=us-central1-docker.pkg.dev/roitraining-dashboard/sight-report/sight-report:${_IMAGE_TAG}'
+      - '--region=us-central1'
+      - '--allow-unauthenticated'
+      - '--service-account=sight-report-agent@roitraining-dashboard.iam.gserviceaccount.com'
+      - '--quiet'
+
+substitutions:
+  _IMAGE_TAG: 'latest'
+
+images:
+  - 'us-central1-docker.pkg.dev/roitraining-dashboard/sight-report/sight-report:${_IMAGE_TAG}'

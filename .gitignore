@@ -1,0 +1,8 @@
+.DS_Store
+.python_version
+.venv
+*.pyc
+sight_report/.adk/
+*.db
+.env
+ 

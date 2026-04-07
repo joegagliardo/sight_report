@@ -1,0 +1,54 @@
+[2026-03-30 15:47:19] Branch: main
+Prompt: I want to write a basic ask agent to read the contents of an air table table
+[2026-03-30 15:53:29] Branch: main
+Prompt: I want to create an adk agent to read a table in airtable. what are all the setup steps I need to do in Airtable, and write a sample ADK agent to read the table called S.I.G.H.T. Reports
+[2026-03-31 22:21:47 EDT] [main] can you add a vertexai search tool to the sight_agent to search in a vertex ai datastore of pdfs of class outlines
+[2026-04-01T02:32:17Z] [main] fix this project so that there is a standard google bigquery query tool that I can use to query the tables in the default project by querying a view called report_pipelines make it so it runs the query, fetches the results for the given company and optionally a date range then runs the prompts to do the analysis on those query results It should use the vertexai search of a datastore to scan through course outlines and recommend any classes that would be a helpful followup for the client based on the feedback of the reports_pipeline data
+[2026-04-01T02:34:34Z] [main] make those changes to the project
+[2026-04-01T02:41:50Z] [main] User pasted a traceback about: Object of type date is not JSON serializable
+[2026-04-01T02:46:00Z] [main] User pasted error: ERROR: (gcloud.beta.builds.triggers.create.github) INVALID_ARGUMENT: triggers with repository resources cannot be created in the "global" region
+[2026-04-01T17:12:21Z] [main] modify the bigquery tool so that it can search for the company irrespective of upper/lower case and punctuation marks
+[2026-04-01T17:22:47Z] [main] make the Dockerfile to turn this into a cloud build that will deploy this to cloud run. Use the project roitraining-dashboard and call the application sight_report
+[2026-04-01T17:29:44Z] [main] create a flask web page app that shows a standard sort of chat interface like gemini.google.com such that when a prompt is entered it sends it to the sight_report agent and returns the results
+[2026-04-01T17:45:39Z] [main] modify the dockerfilie to launch the web app not the adk web
+[2026-04-01T17:57:33Z] [main] remove the quarterly report and feedback summary from the side bar and make sure the New chat clears the sessions, refreshes the UI
+[2026-04-01T17:59:01Z] [main] Error during stream: InMemorySessionService.get_session() missing 1 required keyword-only argument: app_name
+[2026-04-01T18:01:46Z] [main] write a shell script to call the cloud build yaml
+[2026-04-01T18:03:58Z] [main] Check the gcloud log [/Users/joey/.config/gcloud/logs/2026.04.01/14.03.06.737867.log] to see which files and the contents of the default gcloudignore file used... ERROR: (gcloud.builds.submit) INVALID_ARGUMENT: invalid build: invalid image name "gcr.io/roitraining-dashboard/sight-report:"
+[2026-04-01T18:14:24Z] [main] implement a query distillation process when the sight-report agent needs to call the vertexai datastore
+[2026-04-01T18:28:58Z] [main] modify the bigquery query to use the start_date_from_pipeline_event and end_date_from_pipeline_event fields so that if either is within the date range it includes the rows
+[2026-04-01T18:30:16Z] [main] modify the query to allow it to search by events submitted by an instructor or an roi_rep using the appropriate fields in the BQ table
+[2026-04-01T18:34:00Z] [main] the hyperlinks do not link to the underlying pdf in the gcs bucket. make them so they link to the public URL for them
+[2026-04-01T18:38:51Z] [main] the output for ptential followup opportunities & next steps does not show hyperlinks for the public http:// url of the underlying documents
+[2026-04-01T18:51:27Z] [main] it still shows stream event ids but nothing in the browser
+[2026-04-01T18:53:42Z] [main] it finally came back with something in the browser but all it returned was a short "## Content Calibration & Gaps - Watchpoint" and nothing else like ADK returns
+[2026-04-01T19:00:52Z] [main] it only output this "Content Calibration & Gaps - WatchpointPotential Follow-on Opportunities & Next Steps" to the browser, but the body of each of those headers is missing
+[2026-04-01T19:06:27Z] [main] change the UI from dark mode
+[2026-04-01T19:07:55Z] [main] the hyperlinks are not properly showing. They show like this: " [Multi-agent Applications on Vertex AI](https://cloud.google.com/training)" I want it to show the course title and hyperlink to the underlying public url of the file in the gcs bucket so it can be clicked and navigate directly to the pdf of the course outline
+[2026-04-01T19:10:32Z] [main] all the hyperlinks point to ttp://127.0.0.1:5665/#, I want them to point the the public url of the file
+[2026-04-01T19:12:14Z] [main] now all the links point to "https://cloud.google.com/training"
+[2026-04-01T19:14:13Z] [main] write a gcloud command to create a firestore database called sight_report and save it into a shell script
+[2026-04-01T19:28:37Z] [main] change the grc.io for the artifact registry in cloud build to be sight-report instead
+[2026-04-01T19:57:25Z] [main] modify the code so that the instructions are not hardcoded into the python source code but are instead fetched from a firestore database called: sight-report in a collection called: prompts. They should have fields for instructions, date_entered, agent_name.
+[2026-04-01T20:02:17Z] [main] Handling build error with SHORT_SHA and script syntax error
+[2026-04-01T20:09:24Z] [main] Fix Cloud Run permissions and API key issues
+[2026-04-01T20:14:37Z] [main] Re-verifying Firestore prompt integration
+[2026-04-01T20:19:00Z] [main] Providing gcloud command for Firestore index creation
+[2026-04-01T20:19:19Z] [main] Saving Firestore index command to shell script
+[2026-04-01T22:03:42Z] [main] add an admin page that lets you see all the agent prompt definitions and each one of the definitions over time. allow the user to add a new one but not edit or delete existing ones
+[2026-04-01T22:07:57Z] [main] Fix NameError: InMemoryRunner is not defined in app.py
+[2026-04-01 18:17:37] Branch: main
+Prompt: on the admin page when I click the save button it changes to saving, but when the transaction completes successfully it should change to Saved instead.
+[2026-04-01 18:21:41] Branch: main
+Prompt: the hyperlinks to the files are still just generically showing https://cloud.google.com/training for all of them. I want it to use the link that looks like "https://storage.googleapis.com/roitraining-dashboard-grounding/gcp/C-AGTSPI-B_DS_EN.pdf" can you modify the agent so when the vertex AI search to the datastore finds the matching documents it also brings this as a part of the content so it can be turned into the hyperlinks properly.
+[2026-04-01 18:26:32] Branch: main
+Prompt: this version removed the hyperlinks altogether. revert to showing the class title as a hyperlink and have it link to the public URL like this "https://storage.googleapis.com/roitraining-dashboard-grounding/gcp/C-AGTSPI-B_DS_EN.pdf".If the vertexai search does not directly return it, infer it from the gs:// path it returns
+[2026-04-01 23:13:24] Branch: main
+Prompt: when I run this program locally it works fine, but when I run it on cloud run I get the following when I look at the logs: ValueError: No API key was provided. Please pass a valid API key.
+[2026-04-01 23:16:57] Branch: main
+Prompt: fixing ModuleNotFoundError: No module named 'sight_report.firestore_utils'
+Timestamp: 2026-04-03T12:40:49-0400
+Branch: main
+Prompt: create an agent that can make a call to nano banana 2 to generate an image. It will have a prompt for the system instructions and require that it load several image files to incorporate into the prompt. These image files could be provided in a gcp bucket by including their file name. call this agent sight_logo
+--------------------------------------------------
+2026-04-07T12:54:32-04:00 [main]: line 6 is failing to import on sight_report agent.py

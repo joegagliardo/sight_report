@@ -1,0 +1,9 @@
+# trigger.yaml.tmpl
+name: ${TRIGGER_NAME}
+filename: cloudbuild.yaml
+github:
+  owner: ${GITHUB_OWNER}
+  name: ${REPO_NAME}
+  push:
+    tag: '.*-deploy$'
+  

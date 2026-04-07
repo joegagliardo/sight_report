@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard | Sight Report Prompt Management</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        .admin-main {
+            padding: 2.5rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .admin-header {
+            margin-bottom: 2.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 1.5rem;
+        }
+
+        .admin-header h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 2.2rem;
+            color: var(--text-primary);
+        }
+
+        .admin-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .history-card {
+            background: white;
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+            display: flex;
+            flex-direction: column;
+            max-height: 300px;
+        }
+
+        .card-header {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            font-weight: 700;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .prompt-list {
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .prompt-item {
+            padding: 1.25rem;
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .prompt-item:hover {
+            background: #f8fafc;
+        }
+
+        .prompt-item.active {
+            background-color: var(--message-user);
+            border-left: 4px solid var(--accent-blue);
+        }
+
+        .prompt-date {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.4rem;
+        }
+
+        .prompt-version-label {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        /* Editor Area */
+        .editor-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .editor-card {
+            background: white;
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+            padding: 1.5rem;
+        }
+
+        .editor-label {
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+            display: block;
+        }
+
+        textarea.prompt-editor {
+            width: 100%;
+            height: 450px;
+            padding: 1.25rem;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            resize: vertical;
+            background: #fafafa;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        textarea.prompt-editor:focus {
+            border-color: var(--accent-blue);
+            background: white;
+        }
+
+        .actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .btn-primary {
+            background-color: var(--accent-blue);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 10px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 15px rgba(37, 99, 235, 0.3);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .badge {
+            background: #e2e8f0;
+            color: #475569;
+            padding: 0.25rem 0.5rem;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .badge.latest {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        #save-status {
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: opacity 0.3s;
+        }
+
+        .success-text { color: #166534; }
+        .error-text { color: #991b1b; }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <a href="/" style="text-decoration: none;">
+                    <div class="logo">
+                        <span class="logo-icon">S</span>
+                        <span class="logo-text">SightReport</span>
+                    </div>
+                </a>
+            </div>
+            <div class="chat-history">
+                <p style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.5rem; font-weight: 700; padding: 0 0.75rem;">AGENTS</p>
+                <div id="agent-list">
+                    <!-- Dynamic agent list -->
+                </div>
+            </div>
+            <div class="sidebar-footer">
+                <div class="user-profile">
+                    <div class="avatar">A</div>
+                    <span>Admin Access</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Dashboard -->
+        <main class="admin-main">
+            <div class="admin-header">
+                <div>
+                    <h1>Prompt History</h1>
+                    <p style="color: var(--text-secondary);">Manage and version agent instructions stored in Firestore.</p>
+                </div>
+                <div id="save-status" style="opacity: 0;"></div>
+            </div>
+
+            <div class="admin-grid">
+                <!-- Timeline Sidebar -->
+                <div class="history-card">
+                    <div class="card-header">
+                        Version Timeline
+                        <span class="badge" id="version-count">0 Versions</span>
+                    </div>
+                    <div id="prompt-timeline" class="prompt-list">
+                        <!-- Items injected by JS -->
+                        <div style="padding: 2rem; text-align: center; color: var(--text-secondary);">Loading history...</div>
+                    </div>
+                </div>
+
+                <!-- Editor Area -->
+                <div class="editor-container">
+                    <div class="editor-card">
+                        <label class="editor-label" id="editor-title">New Prompt Definition</label>
+                        <textarea id="prompt-content" class="prompt-editor" placeholder="Write the new system instruction here..."></textarea>
+                        <div class="actions">
+                            <p id="readonly-hint" style="font-size: 0.85rem; color: var(--text-secondary); margin-right: auto; line-height: 1.4;">
+                                Note: Editing historical versions is disabled.<br>Modifications will be saved as a <strong>new latest version</strong>.
+                            </p>
+                            <button id="save-btn" class="btn-primary">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v13a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                                Save New Version
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+</body>
+</html>
