@@ -52,3 +52,15 @@ Branch: main
 Prompt: create an agent that can make a call to nano banana 2 to generate an image. It will have a prompt for the system instructions and require that it load several image files to incorporate into the prompt. These image files could be provided in a gcp bucket by including their file name. call this agent sight_logo
 --------------------------------------------------
 2026-04-07T12:54:32-04:00 [main]: line 6 is failing to import on sight_report agent.py
+
+--- 2026-04-07 16:21:58 (branch: main) ---
+modify callback_logging to add a before_tool_callback and after_tool_callback function
+
+--- 2026-04-07 18:00:54 (branch: main) ---
+adk web [and logs provided]
+
+--- 2026-04-07 18:30:45 (branch: main) ---
+do it
+
+--- 2026-04-07 19:10:37 (branch: main) ---
+do it
