@@ -49,19 +49,93 @@ def fetch_gcs_image_base64(gcs_uri: str) -> str:
         
         image_bytes = blob.download_as_bytes()
         
-        # Determine MIME type
+        # Use Pillow to downsample image to save tokens
+        import io
+        from PIL import Image
+        img = Image.open(io.BytesIO(image_bytes))
+        
+        # Max dimension of 512px to keep token count manageable
+        img.thumbnail((512, 512))
+        
+        # Determine MIME type and save back to bytes
         ext = blob_name.split(".")[-1].lower()
-        mime_type = "image/png" # Default
+        mime_type = "image/png"
+        format_str = "PNG"
         if ext in ["jpg", "jpeg"]:
             mime_type = "image/jpeg"
+            format_str = "JPEG"
         elif ext == "webp":
             mime_type = "image/webp"
+            format_str = "WEBP"
+        
+        output = io.BytesIO()
+        img.save(output, format=format_str, quality=80)
+        image_bytes = output.getvalue()
         
         b64_data = base64.b64encode(image_bytes).decode("utf-8")
         return f"data:{mime_type};base64,{b64_data}"
     except Exception as e:
         print(f"Error fetching GCS image {gcs_uri}: {e}")
         return gcs_uri # Fallback to URI if fetch fails
+
+def process_gcs_manifest_tool_images(input_json: str, base_bucket: str = "gs://roitraining-dashboard-grounding") -> str:
+    """
+    Parses a manifest of names and GCS paths, and returns a JSON string 
+    mapping labels to their full GCS URIs exactly as requested.
+    """
+    import re
+    base_bucket = base_bucket.rstrip('/') + '/'
+
+    try:
+        # 1. Brutal cleaning for smart quotes and other common copy-paste artifacts
+        # Replace all variations of smart double quotes with standard double quotes
+        clean_json = re.sub(r'[\u201C\u201D\u201E\u201F]+', '"', input_json)
+        # Replace all variations of smart single quotes with standard single quotes
+        clean_json = re.sub(r'[\u2018\u2019\u201A\u201B]+', "'", clean_json)
+        
+        # 2. Find the actual JSON block if there's surrounding text
+        match = re.search(r'(\{.*\})', clean_json, re.DOTALL)
+        if match:
+            clean_json = match.group(1)
+
+        data: Dict[str, Any] = json.loads(clean_json)
+        
+        manifest: Dict[str, str] = {}
+
+        # 1. Process Template
+        template_val = data.get("template")
+        if template_val:
+            # Templates are typically .png as per previous turns
+            uri = f"{base_bucket}templates/{template_val}"
+            manifest[template_val] = fetch_gcs_image_base64(uri)
+
+        # 2. Process Company
+        company_val = data.get("company")
+        if company_val:
+            # Plural 'company_logos' as confirmed in working GCS paths
+            uri = f"{base_bucket}company_logos/{company_val}"
+            # Try both .png and .jpg
+            manifest["company_logo"] = fetch_gcs_image_base64(uri + ".png")
+            # If the fetch fails to find .png, the error handling handles it
+
+        # 3. Process Classes/Instructors
+        classes = data.get("classes", [])
+        if isinstance(classes, list):
+            for cls_obj in classes:
+                instructor = cls_obj.get("instructor")
+                if instructor:
+                    # Instructors seem to be .jpg in some cases
+                    uri = f"{base_bucket}instructor_photos/{instructor}.jpg"
+                    manifest[instructor] = fetch_gcs_image_base64(uri)
+
+        result_str = json.dumps(manifest, indent=2)
+        print(f"Tool Result: {result_str}")
+        return result_str
+
+    except Exception as e:
+        error_msg = f"Error parsing JSON tools input: {str(e)}"
+        print(error_msg)
+        return json.dumps({"error": error_msg})
 
 def process_gcs_manifest_tool(input_json: str, base_bucket: str = "gs://roitraining-dashboard-grounding") -> str:
     """
@@ -90,15 +164,13 @@ def process_gcs_manifest_tool(input_json: str, base_bucket: str = "gs://roitrain
         # 1. Process Template
         template_val = data.get("template")
         if template_val:
-            uri = f"{base_bucket}templates/{template_val}"
-            manifest[template_val] = fetch_gcs_image_base64(uri)
+            manifest[template_val] = f"{base_bucket}templates/{template_val}"
 
         # 2. Process Company
         company_val = data.get("company")
         if company_val:
             # Desired: Key='company_log', Folder='company_logo'
-            uri = f"{base_bucket}company_logos/{company_val}.png"
-            manifest["company_logo"] = fetch_gcs_image_base64(uri)
+            manifest["company_logo"] = f"{base_bucket}company_logo/{company_val}.png"
 
         # 3. Process Classes/Instructors
         classes = data.get("classes", [])
@@ -107,8 +179,7 @@ def process_gcs_manifest_tool(input_json: str, base_bucket: str = "gs://roitrain
                 instructor = cls_obj.get("instructor")
                 if instructor:
                     # Desired: Key=Instructor Name, Folder='instructor_photos'
-                    uri = f"{base_bucket}instructor_photos/{instructor}.png"
-                    manifest[instructor] = fetch_gcs_image_base64(uri)
+                    manifest[instructor] = f"{base_bucket}instructor_photos/{instructor}.png"
 
         result_str = json.dumps(manifest, indent=2)
         print(f"Tool Result: {result_str}")
@@ -118,59 +189,6 @@ def process_gcs_manifest_tool(input_json: str, base_bucket: str = "gs://roitrain
         error_msg = f"Error parsing JSON tools input: {str(e)}"
         print(error_msg)
         return json.dumps({"error": error_msg})
-
-# def process_gcs_manifest_tool(input_json: str, base_bucket: str = "gs://roitraining-dashboard-grounding") -> str:
-#     """
-#     Parses a manifest of names and GCS paths, and returns a JSON string 
-#     mapping labels to their full GCS URIs exactly as requested.
-#     """
-#     import re
-#     base_bucket = base_bucket.rstrip('/') + '/'
-
-#     try:
-#         # 1. Brutal cleaning for smart quotes and other common copy-paste artifacts
-#         # Replace all variations of smart double quotes with standard double quotes
-#         clean_json = re.sub(r'[\u201C\u201D\u201E\u201F]+', '"', input_json)
-#         # Replace all variations of smart single quotes with standard single quotes
-#         clean_json = re.sub(r'[\u2018\u2019\u201A\u201B]+', "'", clean_json)
-        
-#         # 2. Find the actual JSON block if there's surrounding text
-#         match = re.search(r'(\{.*\})', clean_json, re.DOTALL)
-#         if match:
-#             clean_json = match.group(1)
-
-#         data: Dict[str, Any] = json.loads(clean_json)
-        
-#         manifest: Dict[str, str] = {}
-
-#         # 1. Process Template
-#         template_val = data.get("template")
-#         if template_val:
-#             manifest[template_val] = f"{base_bucket}templates/{template_val}"
-
-#         # 2. Process Company
-#         company_val = data.get("company")
-#         if company_val:
-#             # Desired: Key='company_log', Folder='company_logo'
-#             manifest["company_logo"] = f"{base_bucket}company_logo/{company_val}.png"
-
-#         # 3. Process Classes/Instructors
-#         classes = data.get("classes", [])
-#         if isinstance(classes, list):
-#             for cls_obj in classes:
-#                 instructor = cls_obj.get("instructor")
-#                 if instructor:
-#                     # Desired: Key=Instructor Name, Folder='instructor_photos'
-#                     manifest[instructor] = f"{base_bucket}instructor_photos/{instructor}.png"
-
-#         result_str = json.dumps(manifest, indent=2)
-#         print(f"Tool Result: {result_str}")
-#         return result_str
-
-#     except Exception as e:
-#         error_msg = f"Error parsing JSON tools input: {str(e)}"
-#         print(error_msg)
-#         return json.dumps({"error": error_msg})
 
 # --- Default Instructions ---
 # DEFAULT_LOGO_INSTRUCTION = """You are a creative brand designer specialized in generating high-quality logos.
@@ -226,17 +244,14 @@ instructions = DEFAULT_LOGO_INSTRUCTION
 # --- Define the Agent ---
 sight_logo = Agent(
     name="sight_logo"
-    # Nano Banana 2 = Gemini 3.1 Flash Image
+    # Using Gemini 3.1 Flash Image Preview for generation
     , model=os.getenv("LOGO_MODEL", "gemini-3.1-flash-image-preview")
     , instruction = instructions
-    , tools=[process_gcs_manifest_tool] # We might add tools here later if needed
+    , tools=[process_gcs_manifest_tool_images]
     , before_model_callback=log_query_to_model
     , after_model_callback=log_model_response
     , before_tool_callback=before_tool_callback
     , after_tool_callback=after_tool_callback
-    , model_config={
-        "max_input_tokens": 1000000
-    }
 )
 
 root_agent = sight_logo
