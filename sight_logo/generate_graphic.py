@@ -19,11 +19,10 @@ def generate_trip_infographic(data):
     classes = data.get("classes", [])
     num_classes = len(classes)
     
-    # Calculate rows based on the provided logic
-    # (Simplified logic: splits into rows of 3 to balance as requested)
+    # Calculate rows (up to 5 items per row)
     rows = []
-    for i in range(0, num_classes, 3):
-        rows.append(classes[i:i + 3])
+    for i in range(0, num_classes, 5):
+        rows.append(classes[i:i + 5])
     
     total_height = header_height + (len(rows) * row_height) + 100
     img = Image.new('RGB', (width, total_height), color=white)
@@ -31,60 +30,93 @@ def generate_trip_infographic(data):
 
     # Load Fonts (Assumes standard paths, adjust for your OS)
     try:
-        font_bold = ImageFont.truetype("arialbd.ttf", 24)
-        font_reg = ImageFont.truetype("arial.ttf", 18)
-        font_large = ImageFont.truetype("arialbd.ttf", 40)
+        font_bold = ImageFont.truetype("arialbd.ttf", 28)
+        font_reg = ImageFont.truetype("arial.ttf", 20)
+        font_large = ImageFont.truetype("arialbd.ttf", 100)
     except:
         font_bold = font_reg = font_large = ImageFont.load_default()
 
     # --- 1. Header Construction ---
-    # Draw Google Cloud Icon Placeholder & "TRIP Report"
-    draw.text((50, 40), "☁ TRIP Report", fill=black, font=font_large)
+    # Fetch & Draw Google Cloud Logo from GCS
+    try:
+        storage_client = storage.Client()
+        bucket = storage_client.bucket("roitraining-dashboard-grounding")
+        gc_logo_blob = bucket.blob("company_logos/Google Cloud.png")
+        gc_logo_bytes = gc_logo_blob.download_as_bytes()
+        gc_logo = Image.open(io.BytesIO(gc_logo_bytes))
+        
+        # Trim whitespace from Google Cloud logo
+        if gc_logo.mode != 'RGBA':
+            gc_logo = gc_logo.convert('RGBA')
+        bbox = gc_logo.getbbox()
+        if bbox:
+            gc_logo = gc_logo.crop(bbox)
+            
+        # Scale Google Cloud logo (making it bigger)
+        gc_logo_h = 80
+        aspect = gc_logo.width / gc_logo.height
+        gc_logo = gc_logo.resize((int(gc_logo_h * aspect), gc_logo_h), Image.Resampling.LANCZOS)
+        
+        img.paste(gc_logo, (50, 42), mask=gc_logo if gc_logo.mode == 'RGBA' else None)
+        title_x = 50 + int(gc_logo_h * aspect) + 15
+    except Exception as e:
+        print(f"Warning: Could not fetch Google Cloud logo ({e})")
+        title_x = 50
+
+    # Draw "TRIP Report" title
+    # draw.text((title_x, 40), "TRIP Report", fill=black, font=font_large)
     
     # --- Fetch & Draw Company Logo from GCS ---
     try:
         bucket_name = "roitraining-dashboard-grounding"
         blob_name = f"company_logos/{data['company']}.png"
         
-        storage_client = storage.Client()
+        # storage_client already initialized above
         bucket = storage_client.bucket(bucket_name)
         blob = bucket.blob(blob_name)
         
         logo_bytes = blob.download_as_bytes()
         company_logo = Image.open(io.BytesIO(logo_bytes))
         
-        # Scale logo to approx 1/3 height of white header section (header_height - 50 = 200px)
-        # 1/3 of header row (~80px height)
-        max_logo_h = 70
+        # Trim whitespace from company logo
+        if company_logo.mode != 'RGBA':
+            company_logo = company_logo.convert('RGBA')
+        bbox = company_logo.getbbox()
+        if bbox:
+            company_logo = company_logo.crop(bbox)
+            
+        # Scale logo to be 20% smaller than previous 70px (70 * 0.8 = 56)
+        max_logo_h = 56
         aspect_ratio = company_logo.width / company_logo.height
         new_w = int(max_logo_h * aspect_ratio)
         company_logo = company_logo.resize((new_w, max_logo_h), Image.Resampling.LANCZOS)
         
-        # Paste logo left-aligned, below the title
-        img.paste(company_logo, (50, 105), mask=company_logo if company_logo.mode == 'RGBA' else None)
+        # Paste logo moved 50px to the right (from x=50 to x=100)
+        company_logo_y = 122 + 10
+        img.paste(company_logo, (100, company_logo_y), mask=company_logo if company_logo.mode == 'RGBA' else None)
         print(f"Successfully added logo: {blob_name}")
     except Exception as e:
         print(f"Warning: Could not fetch company logo from GCS ({e}). Using text fallback.")
-        draw.text((50, 110), data["company"], fill=black, font=font_bold)
+        draw.text((100, 132), data["company"], fill=black, font=font_bold)
 
     # --- 2. Dark Blue Section ---
     draw.rectangle([0, header_height - 50, width, total_height], fill=bg_color)
-    draw.text((50, header_height - 30), "Completed PLLJ Training Overview", fill=white, font=font_bold)
+    draw.text((50, header_height - 30), "Completed PLLJ Training Overview", fill=white, font=font_large)
     draw.text((50, header_height + 10), data["company"], fill=bright_blue, font=font_large)
 
     # --- 3. Timeline Rows ---
     current_y = header_height + 150
-    card_w = 240
     margin = 50
-    padding = (card_w // 2) + margin
-    items_per_row = 3
-    content_width = width - (2 * padding)
+    items_per_row = 5
+    min_gap = 20
     
-    # Calculate fixed step based on max items per row for vertical alignment
-    if items_per_row > 1:
-        fixed_step = content_width / (items_per_row - 1)
-    else:
-        fixed_step = 0
+    # Calculate card width dynamically based on items per row and minimum gap
+    content_width = width - (2 * margin)
+    card_w = (content_width - (items_per_row - 1) * min_gap) / items_per_row
+    
+    # Calculate fixed step and padding based on the dynamic card width
+    padding = margin + (card_w / 2)
+    fixed_step = card_w + min_gap
 
     # Cache for instructor photos to avoid redundant downloads
     instructor_cache = {}
@@ -117,16 +149,20 @@ def generate_trip_infographic(data):
             draw.text((x - 45, current_y - 75), entry['date'], fill=white, font=font_reg)
 
             # --- Course Card (Below) ---
-            card_w, card_h = 240, 180
+            card_h = 180
             card_top = current_y + 40
             draw.rounded_rectangle([x - card_w//2, card_top, x + card_w//2, card_top + card_h], 
                                    radius=15, fill="#2A4A8E")
             
-            # Course Title
-            draw.text((x - card_w//2 + 15, card_top + 10), entry['title'], fill=white, font=font_bold)
+            # Course Title (wrapped or truncated)
+            draw.text((x - card_w//2 + 10, card_top + 10), entry['title'], fill=white, font=font_bold)
             
             # --- Instructor Photo (Circle) ---
-            circle_bbox = [x - 100, card_top + 60, x - 50, card_top + 110]
+            # Position photo with a fixed margin from the left of the card
+            photo_size = 50
+            photo_x = x - card_w//2 + 10
+            circle_bbox = [photo_x, card_top + 60, photo_x + photo_size, card_top + 60 + photo_size]
+            
             # Draw gray placeholder circle first
             draw.ellipse(circle_bbox, fill="#CCCCCC")
             
@@ -141,38 +177,60 @@ def generate_trip_infographic(data):
                     photo_img = Image.open(io.BytesIO(photo_bytes)).convert("RGBA")
                     
                     # Circular Crop
-                    size = (100, 100)
-                    photo_img = ImageOps.fit(photo_img, size, centering=(0.5, 0.5))
-                    mask = Image.new('L', size, 0)
+                    crop_res = 100
+                    photo_img = ImageOps.fit(photo_img, (crop_res, crop_res), centering=(0.5, 0.5))
+                    mask = Image.new('L', (crop_res, crop_res), 0)
                     mask_draw = ImageDraw.Draw(mask)
-                    mask_draw.ellipse((0, 0) + size, fill=255)
+                    mask_draw.ellipse((0, 0, crop_res, crop_res), fill=255)
                     
-                    circular_photo = Image.new('RGBA', size, (0, 0, 0, 0))
+                    circular_photo = Image.new('RGBA', (crop_res, crop_res), (0, 0, 0, 0))
                     circular_photo.paste(photo_img, (0, 0), mask=mask)
                     
                     # Resize to fit the circle_bbox (50x50)
-                    circular_photo = circular_photo.resize((50, 50), Image.Resampling.LANCZOS)
+                    circular_photo = circular_photo.resize((photo_size, photo_size), Image.Resampling.LANCZOS)
                     instructor_cache[instructor_name] = circular_photo
                     print(f"Successfully cached instructor: {instructor_name}")
                 
                 # Paste from cache
-                img.paste(instructor_cache[instructor_name], (circle_bbox[0], circle_bbox[1]), 
+                img.paste(instructor_cache[instructor_name], (int(circle_bbox[0]), int(circle_bbox[1])), 
                           mask=instructor_cache[instructor_name])
             except Exception as e:
                 print(f"Warning: Could not fetch instructor photo for {instructor_name} ({e})")
 
-            # Instructor Name (Split)
+            # Instructor Name (Split) - Positioned next to photo
+            name_x = photo_x + photo_size + 10
             name_parts = instructor_name.split(' ')
-            draw.text((x - 40, card_top + 65), name_parts[0], fill=white, font=font_reg)
-            draw.text((x - 40, card_top + 85), name_parts[1], fill=white, font=font_reg)
+            draw.text((name_x, card_top + 65), name_parts[0], fill=white, font=font_reg)
+            draw.text((name_x, card_top + 85), name_parts[1], fill=white, font=font_reg)
 
             # Attendees (Bottom of card)
-            draw.text((x - 40, card_top + 130), f"👤 {entry['attendees']}", fill=white, font=font_bold)
+            draw.text((photo_x + 5, card_top + 130), f"👤 {entry['attendees']}", fill=white, font=font_bold)
 
         current_y += row_height
 
     # --- 4. Footer ---
-    draw.text((50, total_height - 60), "🌐 ROI Training", fill=white, font=font_bold)
+    try:
+        # Fetch & Draw ROI Logo
+        # storage_client already initialized
+        roi_logo_blob = bucket.blob("company_logos/ROI.png")
+        roi_logo_bytes = roi_logo_blob.download_as_bytes()
+        roi_logo = Image.open(io.BytesIO(roi_logo_bytes))
+        
+        # Trim & Scale
+        if roi_logo.mode != 'RGBA':
+            roi_logo = roi_logo.convert('RGBA')
+        roi_bbox = roi_logo.getbbox()
+        if roi_bbox:
+            roi_logo = roi_logo.crop(roi_bbox)
+        
+        roi_h = 40
+        aspect = roi_logo.width / roi_logo.height
+        roi_logo = roi_logo.resize((int(roi_h * aspect), roi_h), Image.Resampling.LANCZOS)
+        
+        img.paste(roi_logo, (50, total_height - 65), mask=roi_logo if roi_logo.mode == 'RGBA' else None)
+    except Exception as e:
+        print(f"Warning: Could not fetch ROI logo for footer ({e})")
+        draw.text((50, total_height - 60), "🌐 ROI Training", fill=white, font=font_bold)
 
     # Save Output
     output_path = "trip_infographic_output.png"
@@ -188,6 +246,7 @@ example_data = {
         {"date": "Mar 1, 2026", "instructor": "Doug Rehnstrom", "title": "Gemini Workspace", "attendees": 9},
         {"date": "Apr 1, 2026", "instructor": "Steve Lockwood", "title": "CDL", "attendees": 100},
         {"date": "Apr 2, 2026", "instructor": "Doug Rehnstrom", "title": "Advanced CDL", "attendees": 100}
+        ,{"date": "Apr 3, 2026", "instructor": "Doug Rehnstrom", "title": "Advanced CDL", "attendees": 100}
     ]
 }
 

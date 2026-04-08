@@ -88,3 +88,30 @@ modift the generate_trip_infographic function so that it pulls the company logo 
 
 --- 2026-04-07 21:48:38 (branch: main) ---
 modify the function to fetch the instructor image file from gs://roitraining-dashboard-grounding/instructor_photos based on the instructor name, and where the white circle in the graphic is, put the photo of the instructor
+
+--- 2026-04-07 21:51:49 (branch: main) ---
+modify this so that it will put up to five boxes across, and only when it is more than file will it split it into multiple rows
+
+--- 2026-04-07 21:53:39 (branch: main) ---
+make it so the boxes are resized based on the total number across such that there are always at least 20 pixels between each box, but there could be more based on an even distribution of the boxes horizontally
+
+--- 2026-04-07 21:58:06 (branch: main) ---
+download the Google Cloud logo from gs://roitraining-dashboard-grounding/company_logos and put it on the top of the report
+
+--- 2026-04-07 22:00:04 (branch: main) ---
+make the google cloud logo bigger and make the company logo below it 20% smaller than it's current size
+
+--- 2026-04-07 22:01:13 (branch: main) ---
+add 10 pixels of space between the google cloud logo and company logo
+
+--- 2026-04-07 22:04:35 (branch: main) ---
+Move the google cloud logo to the left so it aligns with the company logo
+
+--- 2026-04-07 22:05:32 (branch: main) ---
+move the company logo about 50 pixels to the right
+
+--- 2026-04-07 22:06:06 (branch: main) ---
+make the font size bigger
+
+--- 2026-04-07 22:10:54 (branch: main) ---
+instead of printing ROI Training, load the logo from the storage bucket for company_logos
