@@ -1,6 +1,7 @@
 import os
 import sys
 import io
+import datetime
 from google.cloud import storage
 print(f"Using interpreter: {sys.executable}")
 
@@ -19,10 +20,20 @@ def generate_trip_infographic(data):
     classes = data.get("classes", [])
     num_classes = len(classes)
     
-    # Calculate rows (up to 5 items per row)
+    # Calculate rows based on custom mapping for 1-15 items
+    layout_map = {
+        1: [1], 2: [2], 3: [3], 4: [4], 5: [5],
+        6: [3, 3], 7: [4, 3], 8: [4, 4], 9: [5, 4], 10: [5, 5],
+        11: [4, 4, 3], 12: [4, 4, 4], 13: [5, 4, 4], 14: [5, 5, 4], 15: [5, 5, 5]
+    }
+    
+    distribution = layout_map.get(num_classes, [5] * (num_classes // 5) + ([num_classes % 5] if num_classes % 5 else []))
+    
     rows = []
-    for i in range(0, num_classes, 5):
-        rows.append(classes[i:i + 5])
+    current_idx = 0
+    for count in distribution:
+        rows.append(classes[current_idx : current_idx + count])
+        current_idx += count
     
     total_height = header_height + (len(rows) * row_height) + 100
     img = Image.new('RGB', (width, total_height), color=white)
@@ -233,7 +244,8 @@ def generate_trip_infographic(data):
         draw.text((50, total_height - 60), "🌐 ROI Training", fill=white, font=font_bold)
 
     # Save Output
-    output_path = "trip_infographic_output.png"
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_path = f"trip_infographic_{timestamp}.png"
     img.save(output_path)
     print(f"Infographic generated: {output_path}")
 
@@ -245,9 +257,21 @@ example_data = {
         {"date": "Feb 1, 2026", "instructor": "Joey Gagliardo", "title": "Google ADK", "attendees": 20},
         {"date": "Mar 1, 2026", "instructor": "Doug Rehnstrom", "title": "Gemini Workspace", "attendees": 9},
         {"date": "Apr 1, 2026", "instructor": "Steve Lockwood", "title": "CDL", "attendees": 100},
-        {"date": "Apr 2, 2026", "instructor": "Doug Rehnstrom", "title": "Advanced CDL", "attendees": 100}
-        ,{"date": "Apr 3, 2026", "instructor": "Doug Rehnstrom", "title": "Advanced CDL", "attendees": 100}
-    ]
+        {"date": "Apr 2, 2026", "instructor": "Doug Rehnstrom", "title": "Advanced CDL", "attendees": 100},
+        {"date": "Apr 3, 2026", "instructor": "Doug Rehnstrom", "title": "Special Topics", "attendees": 100},
+        {"date": "Jan 1, 2026", "instructor": "Joey Gagliardo", "title": "App Dev with LLM", "attendees": 15},
+        {"date": "Feb 1, 2026", "instructor": "Joey Gagliardo", "title": "Google ADK", "attendees": 20},
+        {"date": "Mar 1, 2026", "instructor": "Doug Rehnstrom", "title": "Gemini Workspace", "attendees": 9},
+        {"date": "Apr 1, 2026", "instructor": "Steve Lockwood", "title": "CDL", "attendees": 100},
+        {"date": "Apr 2, 2026", "instructor": "Doug Rehnstrom", "title": "Advanced CDL", "attendees": 100},
+        {"date": "Apr 3, 2026", "instructor": "Doug Rehnstrom", "title": "Special Topics", "attendees": 100},
+        {"date": "Jan 2, 2026", "instructor": "Joey Gagliardo", "title": "App Dev with LLM", "attendees": 15},
+        {"date": "Feb 2, 2026", "instructor": "Joey Gagliardo", "title": "Google ADK", "attendees": 20},
+        {"date": "Mar 2, 2026", "instructor": "Doug Rehnstrom", "title": "Gemini Workspace", "attendees": 9},
+        {"date": "Apr 2, 2026", "instructor": "Steve Lockwood", "title": "CDL", "attendees": 100},
+        {"date": "Apr 2, 2026", "instructor": "Doug Rehnstrom", "title": "Advanced CDL", "attendees": 100},
+        {"date": "Apr 3, 2026", "instructor": "Doug Rehnstrom", "title": "Special Topics", "attendees": 100}
+    ][0:11]
 }
 
 generate_trip_infographic(example_data)
