@@ -124,3 +124,17 @@ change it so the file name is timestamped
 
 --- 2026-04-07 22:30:08 (branch: main) ---
 change the spacing logic so that if there are less than 5 boxes on the first row it still takes up the same width it would if there were five but it puts more space between them
+
+--- Wed Apr  8 13:34:25 EDT 2026 (branch: main) ---
+if there are fewer than 5 boxes across then center the entire infographic in the frame
+
+--- Wed Apr  8 13:43:00 EDT 2026 (branch: main) ---
+use the local ttf file called inter.ttf for my default font
+[2026-04-08T14:54:26-04:00] [branch: main] move the attendee count to the bottom right of each box and make the icon 50% larger
+[2026-04-08T15:01:22-04:00] [main] modify the generate_graphic function to move the attendee count to the bottom right of each box and make the icon 50% bigger
+[2026-04-08T15:09:31-04:00] [main] move the attendee icon below the numeric count and move the instructor icon and name to the lower left of each box
+[2026-04-08T15:13:54-04:00] [main] make the attendee logo 40% smaller and swap the position of the logo and the count so that the logo is above the count
+[2026-04-08T15:16:23-04:00] [main] center the attendee count under the attendee icon
+[2026-04-08T15:19:56-04:00] [main] make the attendee count aligned with the last name of the instructor. If the course title is too long for a single line, allow it to wrap to 2 or 3 lines if necessary
+[2026-04-08T15:34:29-04:00] [main] the small solid dots it puts on the end of each line are not showing up as circles. can you make it so the each line ends and completely shows a circular end that touches the boxes above abd below the lines
+[2026-04-08T15:37:12-04:00] [main] move the company name down about 4 pixels
