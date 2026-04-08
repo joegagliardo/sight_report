@@ -85,3 +85,6 @@ do it
 
 --- 2026-04-07 21:42:18 (branch: main) ---
 modift the generate_trip_infographic function so that it pulls the company logo from the bucket gs://roitraining-dashboard-grounding/company_logos based on the file name matching the company name with a .png extension. Use that png file in the header of the infographic.
+
+--- 2026-04-07 21:48:38 (branch: main) ---
+modify the function to fetch the instructor image file from gs://roitraining-dashboard-grounding/instructor_photos based on the instructor name, and where the white circle in the graphic is, put the photo of the instructor
