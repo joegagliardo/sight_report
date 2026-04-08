@@ -271,7 +271,7 @@ example_data = {
         {"date": "Apr 2, 2026", "instructor": "Steve Lockwood", "title": "CDL", "attendees": 100},
         {"date": "Apr 2, 2026", "instructor": "Doug Rehnstrom", "title": "Advanced CDL", "attendees": 100},
         {"date": "Apr 3, 2026", "instructor": "Doug Rehnstrom", "title": "Special Topics", "attendees": 100}
-    ][0:11]
+    ][0:10]
 }
 
 generate_trip_infographic(example_data)
