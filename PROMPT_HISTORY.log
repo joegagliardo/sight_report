@@ -138,3 +138,4 @@ use the local ttf file called inter.ttf for my default font
 [2026-04-08T15:19:56-04:00] [main] make the attendee count aligned with the last name of the instructor. If the course title is too long for a single line, allow it to wrap to 2 or 3 lines if necessary
 [2026-04-08T15:34:29-04:00] [main] the small solid dots it puts on the end of each line are not showing up as circles. can you make it so the each line ends and completely shows a circular end that touches the boxes above abd below the lines
 [2026-04-08T15:37:12-04:00] [main] move the company name down about 4 pixels
+[2026-04-08T15:42:05-04:00] [main] the circular endcaps are slightly overlapping the boxes above and below. can you make it so that the edge of each circle just touches the top or bottom of the box but does not overlap it at all

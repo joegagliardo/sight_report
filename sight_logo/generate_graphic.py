@@ -339,8 +339,10 @@ def generate_trip_infographic(data):
 
             # --- Timeline Connector Dots (Drawn on top to ensure circles) ---
             dot_radius = 6
-            draw.ellipse([x - dot_radius, line_top - dot_radius, x + dot_radius, line_top + dot_radius], fill=bright_blue)
-            draw.ellipse([x - dot_radius, line_bottom - dot_radius, x + dot_radius, line_bottom + dot_radius], fill=bright_blue)
+            # Top dot: centered at line_top + dot_radius, so its top edge touches line_top
+            draw.ellipse([x - dot_radius, line_top, x + dot_radius, line_top + 2 * dot_radius], fill=bright_blue)
+            # Bottom dot: centered at line_bottom - dot_radius, so its bottom edge touches line_bottom
+            draw.ellipse([x - dot_radius, line_bottom - 2 * dot_radius, x + dot_radius, line_bottom], fill=bright_blue)
 
         current_y += row_height
 
