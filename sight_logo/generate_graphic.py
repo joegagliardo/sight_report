@@ -58,6 +58,8 @@ def generate_trip_infographic(data):
 
         # Applying Inter.ttf to your various font sizes
         font_bold = ImageFont.truetype(font_bold_path, 24)
+        font_bold2 = ImageFont.truetype(font_bold_path, 32)
+        # font_bold2 = ImageFont.truetype(font_path, 32)
 
         font_reg = ImageFont.truetype(font_path, 15)
         font_large = ImageFont.truetype(font_path, 40)
@@ -83,7 +85,7 @@ def generate_trip_infographic(data):
         if not storage_client:
             raise Exception("Storage client not initialized")
         bucket = storage_client.bucket("roitraining-dashboard-grounding")
-        gc_logo_blob = bucket.blob("company_logos/Google Cloud.png")
+        gc_logo_blob = bucket.blob("company_logos/Cloud TRIP Report logo.png")
         gc_logo_bytes = gc_logo_blob.download_as_bytes()
         gc_logo = Image.open(io.BytesIO(gc_logo_bytes))
         attendee_logo = None
@@ -169,10 +171,10 @@ def generate_trip_infographic(data):
         
         bbox_company = draw.textbbox((0, 0), company_text.upper(), font=font_bold)
         company_w = bbox_company[2] - bbox_company[0]
-        draw.text(((width - company_w) // 2, header_height + 14), company_text.upper(), fill=bright_blue, font=font_bold)
+        draw.text(((width - company_w) // 2, header_height + 14), company_text.upper(), fill=bright_blue, font=font_bold2)
     else:
         draw.text((50, header_height - 30), title_text, fill=white, font=font_large)
-        draw.text((50, header_height + 14), company_text.upper(), fill=bright_blue, font=font_bold)
+        draw.text((50, header_height + 14), company_text.upper(), fill=bright_blue, font=font_bold2)
 
     # --- 3. Timeline Rows ---
     current_y = header_height + 150
