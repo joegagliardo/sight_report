@@ -139,3 +139,5 @@ use the local ttf file called inter.ttf for my default font
 [2026-04-08T15:34:29-04:00] [main] the small solid dots it puts on the end of each line are not showing up as circles. can you make it so the each line ends and completely shows a circular end that touches the boxes above abd below the lines
 [2026-04-08T15:37:12-04:00] [main] move the company name down about 4 pixels
 [2026-04-08T15:42:05-04:00] [main] the circular endcaps are slightly overlapping the boxes above and below. can you make it so that the edge of each circle just touches the top or bottom of the box but does not overlap it at all
+[2026-04-09T11:55:29-04:00] [main] reposition the attendee icon to be in the lower left corner of each box with the attendee count to the right of it. Reposition the instructor icon and name to be moved up just above that
+[2026-04-09T14:58:34-04:00] [main] center the attendee icon under the instructor photo and move the attendee count to the right to keep the spacing the same as it currently is

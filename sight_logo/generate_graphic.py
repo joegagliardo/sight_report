@@ -60,6 +60,7 @@ def generate_trip_infographic(data):
         font_bold = ImageFont.truetype(font_bold_path, 24)
         font_bold2 = ImageFont.truetype(font_bold_path, 32)
         # font_bold2 = ImageFont.truetype(font_path, 32)
+        font_bold3 = ImageFont.truetype(font_bold_path, 15)
 
         font_reg = ImageFont.truetype(font_path, 15)
         font_large = ImageFont.truetype(font_path, 40)
@@ -260,84 +261,74 @@ def generate_trip_infographic(data):
             for j, line in enumerate(title_lines):
                 draw.text((x - card_w//2 + 10, card_top + 10 + (j * 20)), line, fill=white, font=font_reg)
             
-            # --- Instructor Photo (Circle) ---
-            # Position photo in lower left with a fixed margin
-            photo_size = 50
-            photo_x = x - card_w//2 + 10
-            photo_y = card_top + card_h - photo_size - 10
+            # --- Instructor & Attendee Stacking (Lower Left) ---
+            # 1. Attendee Info (Bottom-most)
+            attendee_margin = 10
+            photo_size = 50 # Defined here for coordination
+            attendee_text = str(entry['attendees'])
+            
+            if attendee_logo:
+                # Center the icon under the instructor photo
+                at_icon_x = x - card_w//2 + attendee_margin + (photo_size // 2) - (attendee_logo.width // 2)
+                at_icon_y = card_top + card_h - attendee_logo.height - attendee_margin
+                
+                at_text_x = at_icon_x + attendee_logo.width + 8
+                # Align text baseline with logo (roughly +6px for small logo)
+                at_text_y = at_icon_y + 6
+                
+                img.paste(attendee_logo, (int(at_icon_x), int(at_icon_y)), mask=attendee_logo)
+                draw.text((at_text_x, at_text_y), attendee_text, fill=white, font=font_bold3)
+                
+                # Use attendee top as anchor for instructor
+                ref_y = at_icon_y
+            else:
+                # Fallback to emoji
+                emoji_text = f"👤 {attendee_text}"
+                ebbox = draw.textbbox((0, 0), emoji_text, font=font_bold3)
+                emoji_width = ebbox[2] - ebbox[0]
+                
+                # Center the emoji under where the instructor photo would be
+                at_text_x = x - card_w//2 + attendee_margin + (photo_size // 2) - (emoji_width // 2)
+                at_text_y = card_top + card_h - 25 - attendee_margin
+                draw.text((at_text_x, at_text_y), emoji_text, fill=white, font=font_bold3)
+                ref_y = at_text_y
+
+            # 2. Instructor Info (Stacked Above Attendee)
+            photo_x = x - card_w//2 + attendee_margin
+            # Move up from attendee info with a 10px gap
+            photo_y = ref_y - photo_size - 10
             circle_bbox = [photo_x, photo_y, photo_x + photo_size, photo_y + photo_size]
             
-            # Draw gray placeholder circle first
+            # --- Instructor Photo Logic ---
             draw.ellipse(circle_bbox, fill="#CCCCCC")
-            
-            # Fetch and paste instructor photo
             try:
                 if instructor_name not in instructor_cache:
                     blob_name = f"instructor_photos/{instructor_name}.jpg"
                     bucket = storage_client.bucket("roitraining-dashboard-grounding")
                     blob = bucket.blob(blob_name)
-                    
                     photo_bytes = blob.download_as_bytes()
                     photo_img = Image.open(io.BytesIO(photo_bytes)).convert("RGBA")
-                    
-                    # Circular Crop
                     crop_res = 100
                     photo_img = ImageOps.fit(photo_img, (crop_res, crop_res), centering=(0.5, 0.5))
                     mask = Image.new('L', (crop_res, crop_res), 0)
                     mask_draw = ImageDraw.Draw(mask)
                     mask_draw.ellipse((0, 0, crop_res, crop_res), fill=255)
-                    
                     circular_photo = Image.new('RGBA', (crop_res, crop_res), (0, 0, 0, 0))
                     circular_photo.paste(photo_img, (0, 0), mask=mask)
-                    
-                    # Resize to fit the circle_bbox (50x50)
                     circular_photo = circular_photo.resize((photo_size, photo_size), Image.Resampling.LANCZOS)
                     instructor_cache[instructor_name] = circular_photo
-                    print(f"Successfully cached instructor: {instructor_name}")
                 
-                # Paste from cache
                 img.paste(instructor_cache[instructor_name], (int(circle_bbox[0]), int(circle_bbox[1])), 
                           mask=instructor_cache[instructor_name])
             except Exception as e:
                 print(f"Warning: Could not fetch instructor photo for {instructor_name} ({e})")
 
-            # Instructor Name (Split) - Positioned next to photo in lower left
+            # Instructor Name
             name_x = photo_x + photo_size + 10
             name_parts = instructor_name.split(' ')
             draw.text((name_x, photo_y + 5), name_parts[0], fill=white, font=font_reg)
             draw.text((name_x, photo_y + 25), name_parts[1], fill=white, font=font_reg)
 
-            # --- Attendees (Stacked in Bottom Right of card) ---
-            right_margin = 15
-            attendee_text = str(entry['attendees'])
-            
-            if attendee_logo:
-                # Calculate text width for centering
-                bbox = draw.textbbox((0, 0), attendee_text, font=font_reg)
-                text_width = bbox[2] - bbox[0]
-
-                # Position text aligned with instructor's last name (photo_y + 25)
-                text_y = int(photo_y + 25)
-                
-                # Position icon above the text, right-aligned to card margin
-                icon_x = int(x + card_w/2 - attendee_logo.width - right_margin)
-                icon_y = int(text_y - attendee_logo.height - 8)
-                
-                # Calculate centered text position relative to icon
-                icon_center_x = icon_x + (attendee_logo.width // 2)
-                text_x = int(icon_center_x - (text_width // 2))
-                
-                # Paste the image icon and draw text
-                img.paste(attendee_logo, (icon_x, icon_y), mask=attendee_logo)
-                draw.text((text_x, text_y), attendee_text, fill=white, font=font_reg)
-            else:
-                # Fallback to emoji if image fails to load
-                emoji_text = f"👤 {attendee_text}"
-                bbox = draw.textbbox((0, 0), emoji_text, font=font_reg)
-                emoji_width = bbox[2] - bbox[0]
-                icon_x = int(x + card_w/2 - emoji_width - right_margin)
-                footer_y_fallback = card_top + card_h - 35
-                draw.text((icon_x, footer_y_fallback), emoji_text, fill=white, font=font_reg)
 
             # --- Timeline Connector Dots (Drawn on top to ensure circles) ---
             dot_radius = 6
@@ -372,35 +363,38 @@ def generate_trip_infographic(data):
         print(f"Warning: Could not fetch ROI logo for footer ({e})")
         draw.text((50, total_height - 60), "🌐 ROI Training", fill=white, font=font_reg)
 
+    return img
+
+
+if __name__ == "__main__":
+    # --- Example Usage ---
+    example_data = {
+        "company": "Rackspace",
+        "classes": [
+            {"date": "Jan 1, 2026", "instructor": "Joey Gagliardo", "title": "Advanced Generative AI and Large Language Model Development Workshop for Enterprise Applications and Business Transformation", "attendees": 15},
+            {"date": "Feb 1, 2026", "instructor": "Joey Gagliardo", "title": "Google ADK Supercalifragilistic Expialidocious", "attendees": 20},
+            {"date": "Mar 1, 2026", "instructor": "Doug Rehnstrom", "title": "Gemini Workspace", "attendees": 9},
+            {"date": "Apr 1, 2026", "instructor": "Steve Lockwood", "title": "CDL", "attendees": 100},
+            {"date": "Apr 2, 2026", "instructor": "Doug Rehnstrom", "title": "Advanced CDL", "attendees": 100},
+            {"date": "Apr 3, 2026", "instructor": "Doug Rehnstrom", "title": "Special Topics", "attendees": 100},
+            {"date": "Jan 1, 2026", "instructor": "Joey Gagliardo", "title": "App Dev with LLM", "attendees": 15},
+            {"date": "Feb 1, 2026", "instructor": "Joey Gagliardo", "title": "Google ADK", "attendees": 20},
+            {"date": "Mar 1, 2026", "instructor": "Doug Rehnstrom", "title": "Gemini Workspace", "attendees": 9},
+            {"date": "Apr 1, 2026", "instructor": "Steve Lockwood", "title": "CDL", "attendees": 100},
+            {"date": "Apr 2, 2026", "instructor": "Doug Rehnstrom", "title": "Advanced CDL", "attendees": 100},
+            {"date": "Apr 3, 2026", "instructor": "Doug Rehnstrom", "title": "Special Topics", "attendees": 100},
+            {"date": "Jan 2, 2026", "instructor": "Joey Gagliardo", "title": "App Dev with LLM", "attendees": 15},
+            {"date": "Feb 2, 2026", "instructor": "Joey Gagliardo", "title": "Google ADK", "attendees": 20},
+            {"date": "Mar 2, 2026", "instructor": "Doug Rehnstrom", "title": "Gemini Workspace", "attendees": 9},
+            {"date": "Apr 2, 2026", "instructor": "Steve Lockwood", "title": "CDL", "attendees": 100},
+            {"date": "Apr 2, 2026", "instructor": "Doug Rehnstrom", "title": "Advanced CDL", "attendees": 100},
+            {"date": "Apr 3, 2026", "instructor": "Doug Rehnstrom", "title": "Special Topics", "attendees": 100}
+        ][0:9]
+    }
+
+    img = generate_trip_infographic(example_data)
     # Save Output
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     output_path = f"trip_infographic_{timestamp}.png"
     img.save(output_path)
     print(f"Infographic generated: {output_path}")
-
-# --- Example Usage ---
-example_data = {
-    "company": "Rackspace",
-    "classes": [
-        {"date": "Jan 1, 2026", "instructor": "Joey Gagliardo", "title": "Advanced Generative AI and Large Language Model Development Workshop for Enterprise Applications and Business Transformation", "attendees": 15},
-        {"date": "Feb 1, 2026", "instructor": "Joey Gagliardo", "title": "Google ADK Supercalifragilistic Expialidocious", "attendees": 20},
-        {"date": "Mar 1, 2026", "instructor": "Doug Rehnstrom", "title": "Gemini Workspace", "attendees": 9},
-        {"date": "Apr 1, 2026", "instructor": "Steve Lockwood", "title": "CDL", "attendees": 100},
-        {"date": "Apr 2, 2026", "instructor": "Doug Rehnstrom", "title": "Advanced CDL", "attendees": 100},
-        {"date": "Apr 3, 2026", "instructor": "Doug Rehnstrom", "title": "Special Topics", "attendees": 100},
-        {"date": "Jan 1, 2026", "instructor": "Joey Gagliardo", "title": "App Dev with LLM", "attendees": 15},
-        {"date": "Feb 1, 2026", "instructor": "Joey Gagliardo", "title": "Google ADK", "attendees": 20},
-        {"date": "Mar 1, 2026", "instructor": "Doug Rehnstrom", "title": "Gemini Workspace", "attendees": 9},
-        {"date": "Apr 1, 2026", "instructor": "Steve Lockwood", "title": "CDL", "attendees": 100},
-        {"date": "Apr 2, 2026", "instructor": "Doug Rehnstrom", "title": "Advanced CDL", "attendees": 100},
-        {"date": "Apr 3, 2026", "instructor": "Doug Rehnstrom", "title": "Special Topics", "attendees": 100},
-        {"date": "Jan 2, 2026", "instructor": "Joey Gagliardo", "title": "App Dev with LLM", "attendees": 15},
-        {"date": "Feb 2, 2026", "instructor": "Joey Gagliardo", "title": "Google ADK", "attendees": 20},
-        {"date": "Mar 2, 2026", "instructor": "Doug Rehnstrom", "title": "Gemini Workspace", "attendees": 9},
-        {"date": "Apr 2, 2026", "instructor": "Steve Lockwood", "title": "CDL", "attendees": 100},
-        {"date": "Apr 2, 2026", "instructor": "Doug Rehnstrom", "title": "Advanced CDL", "attendees": 100},
-        {"date": "Apr 3, 2026", "instructor": "Doug Rehnstrom", "title": "Special Topics", "attendees": 100}
-    ][0:9]
-}
-
-generate_trip_infographic(example_data)
