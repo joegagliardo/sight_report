@@ -9,7 +9,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(str(parent_dir) + "/tools")
 
 from pyairtable import Api
-from google.adk.agents import Agent
+from google.adk.agents import Agent, SequentialAgent, ParallelAgent
 from google.adk.tools import DiscoveryEngineSearchTool
 from bigquery.agent import bq_analyst, get_table_schema, run_bigquery_query, fetch_report_pipelines
 from typing import List, Dict, Any
@@ -18,113 +18,157 @@ from firestore_utils import get_latest_instruction
 
 try:
     from course_search import EnhancedCourseSearchTool
-    from infographic import generate_trip_infographic, process_gcs_manifest_tool, save_report_as_pdf, save_to_bucket
+    from infographic import generate_trip_infographic, process_gcs_manifest_tool, save_report_as_pdf, save_to_bucket, create_and_share_google_doc, save_text_report_to_gcs
 except ImportError:
-    from tools import EnhancedCourseSearchTool, generate_trip_infographic, process_gcs_manifest_tool, save_report_as_pdf, save_to_bucket
+    from tools import EnhancedCourseSearchTool, generate_trip_infographic, process_gcs_manifest_tool, save_report_as_pdf, save_to_bucket, create_and_share_google_doc, save_text_report_to_gcs
 
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# --- Fetch Instructions ---
-_fetched_instruction = get_latest_instruction("sight_report_analyst")
-_fetched_instruction = None
+# --- Specialized Instructions ---
 
-FALLBACK_INSTRUCTION = """You are an insightful data analyst processing client feedback.
-    
-Call the `fetch_report_pipelines` tool to get the survey data for the provided client/company name, and optionally a date range if requested.
-When referring to q1, q2, q3 use the fields: q1_content_calibration_and_gaps, q2_client_projects_and_tech_initiatives, q3_strategic_recommendat, respectively.
-Fetch the q1, q2 and q3, the istunum from the result data.
-
-* Do not include the raw data in the output
-
-* Avoid saying something like the quote/unquote "Yes" or "N/A" responses.
-
-* For any of the paragraphs below if there is no relevant data, keep it short.
-
-* Use the generate_trip_infographic tool to generate an infographic of the classes. Display the infographic in the output at the top followed by the report you generate below:
-
-* Format the output of fetch_report_pipelines tools to look like this example to pass to the generate_trip_inforgraphic tool
- {
-        "company": "Rackspace",
-        "classes": [
-            {"date": "Jan 1, 2026", "instructor": "Joey Gagliardo", "title": "Advanced Generative AI and Large Language Model Development Workshop for Enterprise Applications and Business Transformation", "attendees": 15},
-            {"date": "Feb 1, 2026", "instructor": "Doug Rehnstrom", "title": "Google ADK Supercalifragilistic Expialidocious", "attendees": 20}
-            ]
-            }
-
-* Analyze the data from the three question columns and look for any gaps in the class content and the audience expectations.
-  - Write this up as a short a paragraph that summarizes any disparity between expections and what we provided. 
-  - Title this paragraph with the header: "Content Calibration & Gaps - Watchpoint"
-
-* Analyze the data for "Client Projects & Tech Initiatives"
-  - Write this up as a short a paragraph that summarizes any current or future client technical initiatives or projects or technologies they are interested in.
-  Title this paragraph with the header: "Client Projects & Tech Initiatives"
-
-* Analyze the data for "Strategic Recommendations"
-  - Write a short paragraph that looks for comments that refer to wanting to take a deeper dive into additional training either by 
-    - having more days of training on the same subject (vertical)
-    - training on a related topics, such as if someone took a class on LLM's maybe Agentic development would be a good followup (horizontal)
-
-* **Step 4: Query Distillation & Search**
-  - Based on the "Watchpoint", "Initiatives", and "Strategic Recommendations" above, distill the most critical technical themes and learning gaps into a focused search query of 5-10 technical keywords (e.g., "GKE security Anthos service mesh course outlines").
-  - Use this distilled query as the `query` argument for the `EnhancedCourseSearchTool` to find the most relevant course outlines.
-
-* In a section called "Potential Follow-on Opportunities & Next Steps" 
-  - Provide a short summary paragraph of the follow-on strategy.
-  - List the specific recommended courses by name and a brief 1-sentence justification for each based on the search results and the client's stated needs.
-  - **HYPERLINK FORMATTING RULE (MANDATORY)**:
-    - You MUST format every course recommendation as a hyperlink using the formula: `[Full Course Title](DOCUMENT_URL)`.
-    - Retrieve the `DOCUMENT_URL` from the tool output's `url` field or the `SOURCE_DOCUMENT_LINK` in the content.
-    - **CRITICAL**: Only use direct document links (e.g., `https://storage.googleapis.com/...`). 
-    - **SHUN**: Never use generic search links like `https://cloud.google.com/training`.
-    - If no course-specific document URL is provided by the tool, do not include a hyperlink for that specific item.
-
-* **Final Step: Save and Upload Complete Report**
-  - Once you have generated the full text of the report (Infographic, Content Calibration, Initiatives, Strategic Recommendations, and Follow-on Opportunities):
-    1. Call the `save_report_as_pdf` tool with the text, company name, and infographic path. This will return a local file path.
-    2. Call the `save_to_bucket` tool with that local file path to save it to the cloud storage bucket `roitraining-dashboard-grounding` in a folder called reports.
-  - Inform the user that the complete report has been finalized and uploaded to GCS, providing the resulting GCS path.
+BQ_INSTRUCTION = """You are a BigQuery Data Expert.
+Your goal is to fetch the survey data for the provided client/company name.
+1. Call the `fetch_report_pipelines` tool to get the survey data.
+2. Output a structured summary of the data, specifically focusing on the 'company' and 'classes' (date, instructor, title, attendees).
+3. Ensure the output format is clear so the next stage can analyze it correctly.
+Example output format:
+{
+    "company": "Rackspace",
+    "classes": [
+        {"date": "Jan 1, 2026", "instructor": "Joey Gagliardo", "title": "Advanced AI", "attendees": 15}
+    ]
+}
 """
 
-# Instruction processing logic
-if _fetched_instruction:
-    print(f"🚀 [INIT] Successfully fetched latest instructions from Firestore for 'sight_report_analyst'")
-    instruction_text = _fetched_instruction
-else:
-    print(f"⚠️ [INIT] Firestore fetch failed or empty. Using FALLBACK_INSTRUCTION.")
-    instruction_text = FALLBACK_INSTRUCTION
+BODY_INSTRUCTION = """You are an insightful data analyst. You will receive survey data retrieved from BigQuery.
+    
+Analyze the q1, q2 and q3 fields (Content Calibration, Client Projects, Strategic Recommendations) from the provided data.
 
-# --- Define the Agent ---
-sight_agent = Agent(
-    name="sight_reader",
-    model=os.getenv("MODEL", "gemini-2.0-flash"), 
-    instruction=instruction_text,
+* Analysis Requirements:
+  - Summarize content gaps ("Content Calibration & Gaps - Watchpoint").
+  - Identify future tech initiatives ("Client Projects & Tech Initiatives").
+  - Highlight strategic recommendations for deeper training.
 
+* Course Search:
+  - Distill technical themes into search keywords.
+  - Use `EnhancedCourseSearchTool` to find relevant course outlines.
+  - Recommended courses should be formatted as hyperlinks: `[Full Course Title](DOCUMENT_URL)`.
+
+Produce a comprehensive text-only report. Do not include raw data or mention "Yes/NA" responses.
+"""
+
+GRAPHIC_INSTRUCTION = """You are a report designer. You will receive survey data retrieved from BigQuery.
+Your ONLY job is to call the `generate_trip_infographic` tool using the 'company' and 'classes' data provided.
+Once the infographic is generated, output the local path to the generated image file.
+"""
+
+FINALIZER_INSTRUCTION = """You are a report finalizer. You have received:
+1. A text analysis report from a colleague.
+2. A path to an infographic image.
+
+Your job is to:
+1. Collect the infographic image path and the full text report.
+2. Call the `save_report_as_pdf` tool with the text analysis and the infographic path (Graphic at top, Text below).
+3. Call the `save_to_bucket` tool to upload the final PDF to the 'roitraining-dashboard-grounding' bucket in the 'reports' folder.
+4. Call the `save_text_report_to_gcs` tool with the text analysis to save a raw .txt copy.
+5. Call the `create_and_share_google_doc` tool with the report text and the GCS URI of the uploaded infographic to share it with joegagliardo@gmail.com.
+6. Output a summary with the final GCS link to the PDF, the GCS link to the raw text file, and the URL of the Google Doc.
+"""
+
+# --- Define the Agents ---
+
+# Stage 1: Data Retrieval
+bq_agent = Agent(
+    name="bq_agent",
+    model=os.environ.get("MODEL", "gemini-2.0-flash"),
+    instruction=BQ_INSTRUCTION,
+    tools=[fetch_report_pipelines, get_table_schema, run_bigquery_query]
+)
+
+# Stage 2: Parallel Analysis & Graphic Generation
+body_agent = Agent(
+    name="body_agent",
+    model=os.environ.get("MODEL", "gemini-2.0-flash"), 
+    instruction=BODY_INSTRUCTION,
     tools=[
-        generate_trip_infographic,
         EnhancedCourseSearchTool(
             data_store_id="projects/roitraining-dashboard/locations/global/collections/default_collection/dataStores/gcp-course-outlines", 
             location="global"
-        ), 
-        fetch_report_pipelines,
-        process_gcs_manifest_tool,
-        save_report_as_pdf,
-        save_to_bucket
+        )
     ],
 )
 
-root_agent = sight_agent
+graphic_agent = Agent(
+    name="graphic_agent",
+    model=os.environ.get("MODEL", "gemini-2.0-flash"), 
+    instruction=GRAPHIC_INSTRUCTION,
+    tools=[generate_trip_infographic],
+)
+
+parallel_orchestrator = ParallelAgent(
+    name="parallel_orchestrator",
+    sub_agents=[body_agent, graphic_agent]
+)
+
+# Stage 3: Consolidation
+pdf_finalizer = Agent(
+    name="pdf_finalizer",
+    model=os.environ.get("MODEL", "gemini-2.0-flash"),
+    instruction=FINALIZER_INSTRUCTION,
+    tools=[save_report_as_pdf, save_to_bucket, create_and_share_google_doc, save_text_report_to_gcs]
+)
+
+# --- Orchestrate the Full Pipeline ---
+sight_maker = SequentialAgent(
+    name="sight_maker",
+    sub_agents=[bq_agent, parallel_orchestrator, pdf_finalizer]
+)
+
+root_agent = sight_maker
 
 if __name__ == "__main__":
+    from google.adk.runners import Runner
+    from google.adk.sessions.in_memory_session_service import InMemorySessionService
+    from google.genai import types
+
     async def main():
         print("🚀 [TEST] Running agent with prompt: 'Do Rackspace'...")
-        response = await sight_agent.run_async("Do Rackspace")
-        print("\n--- AGENT RESPONSE ---")
-        print(response.text if hasattr(response, 'text') else response)
-        print("----------------------")
+        
+        # Initialize a local runner for testing
+        runner = Runner(
+            app_name="sight_report_test",
+            agent=sight_maker,
+            session_service=InMemorySessionService(),
+            auto_create_session=True
+        )
+        
+        # Runner handles context initialization and event streaming
+        agen = runner.run_async(
+            user_id="test_user",
+            session_id="test_session",
+            new_message=types.Content(parts=[types.Part(text="Do Rackspace")])
+        )
+        
+        final_response = ""
+        async for event in agen:
+            if event.content:
+                for part in event.content.parts:
+                    if part.text:
+                        # print(part.text, end="", flush=True)
+                        final_response += part.text
+        
+        print("\n--- FINAL AGENT RESPONSE ---")
+        if final_response:
+            print(final_response)
+        else:
+            print("No text response received. (Check if tools were called successfully)")
+        print("----------------------------")
 
     try:
         asyncio.run(main())
     except Exception as e:
         print(f"❌ [TEST] Error running agent: {e}")
+        import traceback
+        traceback.print_exc()

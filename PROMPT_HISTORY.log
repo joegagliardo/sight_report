@@ -144,3 +144,6 @@ use the local ttf file called inter.ttf for my default font
 
 --- 2026-04-09 15:16:53 (branch: main) ---
 when I run this from adk web it gives the following error: Last login: Tue Apr  7 12:50:51 on ttys011 ... IndentationError: Fail to load 'sight_report.agent' module. unindent does not match any outer indentation level
+[2026-04-10 11:40:26] [main] modify the logic of the sight_report agent.py to do the following. the root agent should be a sequential agent that runs the bigquery agent first. The results of that should be sent to a parallel agent that runs the body_agent and graphic_agent with the data from the bigquery agent. The two results of those should be combined into a single PDF with the results of the graphic agent at the top and the body agent below it
+[2026-04-10 12:00:13] [main] modify this so that it creates a single PDF with the infographic as the first page and the report body as the second and subsequent pages. save the combined PDF to the cloud storage bucket reports folder with a time stamped name that looks like "CompanyName_YYYMMDD".pdf.
+[2026-04-10 13:39:55] [main] modify the code to save a copy of the raw text of the report body to the storage bucket with a name like Company_body_YYYMMDD.txt
