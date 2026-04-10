@@ -5,4 +5,5 @@
 sight_report/.adk/
 *.db
 .env
+outputs
  

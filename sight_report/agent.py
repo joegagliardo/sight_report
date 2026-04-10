@@ -1,32 +1,34 @@
-import os
+import sys, os, json
 import asyncio
-import sys
-import json
 from pathlib import Path
 
 # Add directories to sys.path
 parent_dir = Path(__file__).resolve().parent.parent
 sys.path.append(str(parent_dir))
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(str(parent_dir) + "/tools")
 
 from pyairtable import Api
 from google.adk.agents import Agent
 from google.adk.tools import DiscoveryEngineSearchTool
 from bigquery.agent import bq_analyst, get_table_schema, run_bigquery_query, fetch_report_pipelines
-try:
-    from .tools import EnhancedCourseSearchTool, generate_trip_infographic, process_gcs_manifest_tool, save_report_as_pdf, save_to_bucket
-except ImportError:
-    from tools import EnhancedCourseSearchTool, generate_trip_infographic, process_gcs_manifest_tool, save_report_as_pdf, save_to_bucket
-
 from typing import List, Dict, Any
 from vertexai.generative_models import GenerativeModel, Part, Image
 from firestore_utils import get_latest_instruction
+
+try:
+    from course_search import EnhancedCourseSearchTool
+    from infographic import generate_trip_infographic, process_gcs_manifest_tool, save_report_as_pdf, save_to_bucket
+except ImportError:
+    from tools import EnhancedCourseSearchTool, generate_trip_infographic, process_gcs_manifest_tool, save_report_as_pdf, save_to_bucket
+
 from dotenv import load_dotenv
 
 load_dotenv()
 
 # --- Fetch Instructions ---
 _fetched_instruction = get_latest_instruction("sight_report_analyst")
+_fetched_instruction = None
 
 FALLBACK_INSTRUCTION = """You are an insightful data analyst processing client feedback.
     
