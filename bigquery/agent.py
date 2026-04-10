@@ -95,6 +95,7 @@ def fetch_report_pipelines(company_name: str, start_date: str = None, end_date: 
         print(query )
         print("*" * 50)
         results = query_job.result()
+        print(results)
         
         rows = []
         for row in results:

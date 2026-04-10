@@ -141,3 +141,6 @@ use the local ttf file called inter.ttf for my default font
 [2026-04-08T15:42:05-04:00] [main] the circular endcaps are slightly overlapping the boxes above and below. can you make it so that the edge of each circle just touches the top or bottom of the box but does not overlap it at all
 [2026-04-09T11:55:29-04:00] [main] reposition the attendee icon to be in the lower left corner of each box with the attendee count to the right of it. Reposition the instructor icon and name to be moved up just above that
 [2026-04-09T14:58:34-04:00] [main] center the attendee icon under the instructor photo and move the attendee count to the right to keep the spacing the same as it currently is
+
+--- 2026-04-09 15:16:53 (branch: main) ---
+when I run this from adk web it gives the following error: Last login: Tue Apr  7 12:50:51 on ttys011 ... IndentationError: Fail to load 'sight_report.agent' module. unindent does not match any outer indentation level

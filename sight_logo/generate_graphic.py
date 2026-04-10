@@ -124,7 +124,6 @@ def generate_trip_infographic(data):
     # Draw "TRIP Report" title
     # draw.text((title_x, 40), "TRIP Report", fill=black, font=font_large)
     
-    # --- Fetch & Draw Company Logo from GCS ---
     try:
         if not storage_client:
             raise Exception("Storage client not initialized")
@@ -156,8 +155,7 @@ def generate_trip_infographic(data):
         img.paste(company_logo, (100, company_logo_y), mask=company_logo if company_logo.mode == 'RGBA' else None)
         print(f"Successfully added logo: {blob_name}")
     except Exception as e:
-        print(f"Warning: Could not fetch company logo from GCS ({e}). Using text fallback.")
-        draw.text((100, 132), data["company"], fill=black, font=font_bold)
+        print(f"Warning: Could not fetch company logo from GCS ({e}). Leaving blank.")
 
     # --- 2. Dark Blue Section ---
     draw.rectangle([0, header_height - 50, width, total_height], fill=bg_color)
@@ -300,7 +298,6 @@ def generate_trip_infographic(data):
             circle_bbox = [photo_x, photo_y, photo_x + photo_size, photo_y + photo_size]
             
             # --- Instructor Photo Logic ---
-            draw.ellipse(circle_bbox, fill="#CCCCCC")
             try:
                 if instructor_name not in instructor_cache:
                     blob_name = f"instructor_photos/{instructor_name}.jpg"
@@ -321,7 +318,7 @@ def generate_trip_infographic(data):
                 img.paste(instructor_cache[instructor_name], (int(circle_bbox[0]), int(circle_bbox[1])), 
                           mask=instructor_cache[instructor_name])
             except Exception as e:
-                print(f"Warning: Could not fetch instructor photo for {instructor_name} ({e})")
+                print(f"Warning: Could not fetch instructor photo for {instructor_name} ({e}). Leaving blank.")
 
             # Instructor Name
             name_x = photo_x + photo_size + 10
