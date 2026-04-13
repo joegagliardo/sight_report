@@ -1,6 +1,39 @@
+from pathlib import Path
+from dotenv import load_dotenv
+import os
+import sys
+import argparse
+
+# Load environment variables from .env in the same directory as agent.py
+env_path = Path(__file__).resolve().parent / ".env"
+load_dotenv(dotenv_path=env_path)
+
+# Parse authentication flags
+parser = argparse.ArgumentParser(description="Run S.I.G.H.T. Report Agent")
+parser.add_argument("--user", action="store_true", help="Use Application Default Credentials (interactive login)")
+parser.add_argument("--service", action="store_true", help="Use Service Account key from .env")
+# Parse only known args to avoid conflicts with tool/agent internal arguments if any
+args, _ = parser.parse_known_args()
+
+# Logic: Default to --user unless --service is specifically requested
+if args.service:
+    print("🔐 [AUTH] Mode: SERVICE ACCOUNT")
+    # Normalize Google Credentials path to be absolute
+    if os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
+        creds_path = os.environ["GOOGLE_APPLICATION_CREDENTIALS"]
+        if not os.path.isabs(creds_path):
+            root_dir = Path(__file__).resolve().parent.parent
+            abs_creds_path = str(root_dir / creds_path)
+            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = abs_creds_path
+            print(f"DEBUG: Normalized GOOGLE_APPLICATION_CREDENTIALS to: {abs_creds_path}")
+else:
+    print("👤 [AUTH] Mode: USER ADC (Default)")
+    # Remove the env var if it exists to force fallback to ADC
+    if "GOOGLE_APPLICATION_CREDENTIALS" in os.environ:
+        del os.environ["GOOGLE_APPLICATION_CREDENTIALS"]
+
 import sys, os, json
 import asyncio
-from pathlib import Path
 
 # Add directories to sys.path
 parent_dir = Path(__file__).resolve().parent.parent
@@ -18,13 +51,11 @@ from firestore_utils import get_latest_instruction
 
 try:
     from course_search import EnhancedCourseSearchTool
-    from infographic import generate_trip_infographic, process_gcs_manifest_tool, save_report_as_pdf, save_to_bucket, create_and_share_google_doc, save_text_report_to_gcs
+    from infographic import generate_trip_infographic, process_gcs_manifest_tool, save_report_as_pdf, save_to_bucket, create_and_share_google_doc, save_text_report_to_gcs, save_report_as_word
 except ImportError:
-    from tools import EnhancedCourseSearchTool, generate_trip_infographic, process_gcs_manifest_tool, save_report_as_pdf, save_to_bucket, create_and_share_google_doc, save_text_report_to_gcs
+    from tools import EnhancedCourseSearchTool, generate_trip_infographic, process_gcs_manifest_tool, save_report_as_pdf, save_to_bucket, create_and_share_google_doc, save_text_report_to_gcs, save_report_as_word
 
-from dotenv import load_dotenv
-
-load_dotenv()
+# Environment already loaded above
 
 # --- Specialized Instructions ---
 
@@ -64,17 +95,22 @@ Your ONLY job is to call the `generate_trip_infographic` tool using the 'company
 Once the infographic is generated, output the local path to the generated image file.
 """
 
-FINALIZER_INSTRUCTION = """You are a report finalizer. You have received:
-1. A text analysis report from a colleague.
-2. A path to an infographic image.
+FINALIZER_INSTRUCTION = """You are the CRITICAL FINAL STAGE of the S.I.G.H.T. report pipeline.
+You will receive:
+1. A comprehensive text analysis report (from the body_agent).
+2. A local file path to an infographic image (from the graphic_agent, format: 'CompanyName_infographic_YYYYMMDD.png').
 
-Your job is to:
-1. Collect the infographic image path and the full text report.
-2. Call the `save_report_as_pdf` tool with the text analysis and the infographic path (Graphic at top, Text below).
-3. Call the `save_to_bucket` tool to upload the final PDF to the 'roitraining-dashboard-grounding' bucket in the 'reports' folder.
-4. Call the `save_text_report_to_gcs` tool with the text analysis to save a raw .txt copy.
-5. Call the `create_and_share_google_doc` tool with the report text and the GCS URI of the uploaded infographic to share it with joegagliardo@gmail.com.
-6. Output a summary with the final GCS link to the PDF, the GCS link to the raw text file, and the URL of the Google Doc.
+Your MANDATORY tasks are:
+1. Call the `save_report_as_word` tool using the full text analysis and the infographic path.
+2. Call the `save_to_bucket` tool to upload that Word document. The destination path in the bucket should be: reports/CompanyName_TRIP_Report_YYYYMMDD.docx (ensure you use the 'reports/' prefix).
+3. Call the `save_text_report_to_gcs` tool to save the raw text analysis.
+
+OPTIONAL TASKS:
+- Only call `save_report_as_pdf` if the user specifically asked for a PDF in their original request.
+- Only call `create_and_share_google_doc` if the user specifically asked for a Google Doc.
+
+DO NOT just summarize. You MUST call the mandatory tools to complete the pipeline.
+Finally, provide a summary with the GCS links to the Word document (.docx) and the raw text.
 """
 
 # --- Define the Agents ---
@@ -82,7 +118,7 @@ Your job is to:
 # Stage 1: Data Retrieval
 bq_agent = Agent(
     name="bq_agent",
-    model=os.environ.get("MODEL", "gemini-2.0-flash"),
+    model=os.environ.get("MODEL", "gemini-2.5-flash"),
     instruction=BQ_INSTRUCTION,
     tools=[fetch_report_pipelines, get_table_schema, run_bigquery_query]
 )
@@ -90,7 +126,7 @@ bq_agent = Agent(
 # Stage 2: Parallel Analysis & Graphic Generation
 body_agent = Agent(
     name="body_agent",
-    model=os.environ.get("MODEL", "gemini-2.0-flash"), 
+    model=os.environ.get("MODEL", "gemini-2.5-flash"), 
     instruction=BODY_INSTRUCTION,
     tools=[
         EnhancedCourseSearchTool(
@@ -102,7 +138,7 @@ body_agent = Agent(
 
 graphic_agent = Agent(
     name="graphic_agent",
-    model=os.environ.get("MODEL", "gemini-2.0-flash"), 
+    model=os.environ.get("MODEL", "gemini-2.5-flash"), 
     instruction=GRAPHIC_INSTRUCTION,
     tools=[generate_trip_infographic],
 )
@@ -115,9 +151,9 @@ parallel_orchestrator = ParallelAgent(
 # Stage 3: Consolidation
 pdf_finalizer = Agent(
     name="pdf_finalizer",
-    model=os.environ.get("MODEL", "gemini-2.0-flash"),
+    model=os.environ.get("MODEL", "gemini-2.5-flash"),
     instruction=FINALIZER_INSTRUCTION,
-    tools=[save_report_as_pdf, save_to_bucket, create_and_share_google_doc, save_text_report_to_gcs]
+    tools=[save_report_as_pdf, save_report_as_word, save_to_bucket, create_and_share_google_doc, save_text_report_to_gcs]
 )
 
 # --- Orchestrate the Full Pipeline ---

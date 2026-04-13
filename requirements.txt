@@ -10,3 +10,4 @@ google-cloud-storage
 google-cloud-aiplatform
 pillow
 fpdf2
+python-docx
