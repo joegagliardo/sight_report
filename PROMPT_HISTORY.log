@@ -248,3 +248,13 @@ Timestamp: Fri Apr 17 14:50:10 EDT 2026
 Branch: main
 Prompt: Infographic generated: reports/Rackspace_infographic_20260417.png
 ❌ [TEST] Error running agent: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': 'Invalid JSON payload received. Unknown name "additional_properties" at \'tools[0].function_declarations[3].parameters.properties[6].value\': Cannot find field.' ... }}
+
+---
+Timestamp: Fri Apr 17 14:56:47 EDT 2026
+Branch: main
+Prompt: modify the code so that it does not save the word doc and the individual text file and infographic png file to the google bucket, but do not delete the functions that do that, just make it so the code is not called and instead only creates the google doc unless the prompt asks to create the word docx and store it in the gcs bucket
+
+---
+Timestamp: Fri Apr 17 14:59:37 EDT 2026
+Branch: main
+Prompt: modify it so that the name it makes for the google doc is the same as it would make for the docx meaning the companyname_TRIP_Report_YYYYMMDD

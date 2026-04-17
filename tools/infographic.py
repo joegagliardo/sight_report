@@ -347,12 +347,12 @@ def generate_trip_infographic(data):
     img.save(output_path)
     
     # Try to save to bucket if possible
-    try:
-        # Save to the 'reports' folder in GCS using only the filename
-        gcs_dest = f"reports/{os.path.basename(output_path)}"
-        save_to_bucket(output_path, 'roitraining-dashboard-grounding', gcs_dest)
-    except Exception as e:
-        print(f"Warning: Could not upload infographic to bucket ({e})")
+    # try:
+    #     # Save to the 'reports' folder in GCS using only the filename
+    #     gcs_dest = f"reports/{os.path.basename(output_path)}"
+    #     save_to_bucket(output_path, 'roitraining-dashboard-grounding', gcs_dest)
+    # except Exception as e:
+    #     print(f"Warning: Could not upload infographic to bucket ({e})")
     
     print(f"Infographic generated: {output_path}")
     
@@ -489,7 +489,9 @@ def create_and_share_google_doc(company_name: str, report_text: str, gcs_image_u
         docs_service = build('docs', 'v1', credentials=creds)
         drive_service = build('drive', 'v3', credentials=creds)
         
-        title = f"{company_name}_{datetime.datetime.now().strftime('%Y%m%d')}"
+        clean_company = company_name.replace(" ", "_")
+        date_str = datetime.datetime.now().strftime('%Y%m%d')
+        title = f"{clean_company}_TRIP_Report_{date_str}"
         
         # We use the Drive API to create the file because it is already verified to work for this Service Account, 
         # whereas the Docs API create() sometimes fails with obscure 403s.

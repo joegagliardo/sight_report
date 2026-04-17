@@ -101,17 +101,19 @@ You will receive:
 2. The result object from the graphic_agent (containing path and metadata).
 
 Your MANDATORY tasks are:
-1. Call the `save_report_as_word` tool using the full text analysis and the infographic path.
-2. Call the `save_to_bucket` tool to upload that Word document. The destination path in the bucket should be: reports/CompanyName_TRIP_Report_YYYYMMDD.docx (ensure you use the 'reports/' prefix).
-3. Call the `save_text_report_to_gcs` tool to save the raw text analysis.
-4. Call the `upload_file_to_drive` tool to upload the Word document to the designated Google Drive folder.
-   - Folder ID: '{os.environ.get('DRIVE_FOLDER_ID', 'NOT_SET')}'
-5. Call the `create_and_share_google_doc` tool to create a native Google Doc in the same folder.
+1. Call the `create_and_share_google_doc` tool to create a native Google Doc in a designated folder.
    - Folder ID: '{os.environ.get('DRIVE_FOLDER_ID', 'NOT_SET')}'
    - Pass the result object from the graphic_agent (received in input 2) as 'image_object'.
 
-OPTIONAL TASKS:
-- Only call `save_report_as_pdf` if the user specifically asked for a PDF in their original request.
+CONDITIONAL TASKS (Only if the user explicitly asks to "store" or "save" formal files):
+- Call `save_report_as_word` to generate a .docx file.
+- Call `save_to_bucket` to upload the Word document and the infographic PNG to GCS.
+- Call `save_text_report_to_gcs` to save the raw text analysis.
+- Call `upload_file_to_drive` to upload the Word document to Google Drive.
+- Call `save_report_as_pdf` if a PDF was specifically requested.
+
+DO NOT perform the conditional archival steps unless the user explicitly requested them in their prompt.
+Finally, provide a summary with the resulting links.
 
 DO NOT just summarize. You MUST call the mandatory tools to complete the pipeline.
 Finally, provide a summary with the GCS links AND the Google Drive links for both the Word document and the native Google Doc.
