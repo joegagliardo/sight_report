@@ -8,7 +8,13 @@ load_dotenv()
 
 # Initialize the BigQuery Client
 # Ensure GOOGLE_APPLICATION_CREDENTIALS is set in your .env or environment
-client = bigquery.Client()
+# Lazy Lazy initializaion of BigQuery Client to avoid startup failures on Cloud Run
+_client = None
+def get_bq_client():
+    global _client
+    if _client is None:
+        _client = bigquery.Client()
+    return _client
 
 # --- Tool 1: Metadata Fetcher ---
 def get_table_schema(dataset_id: str, table_id: str):
@@ -17,6 +23,7 @@ def get_table_schema(dataset_id: str, table_id: str):
     Use this first to understand what data is available before writing a query.
     """
     try:
+        client = get_bq_client()
         table_ref = client.dataset(dataset_id).table(table_id)
         table = client.get_table(table_ref)
         schema_info = [{"name": f.name, "type": f.field_type} for f in table.schema]
@@ -32,6 +39,7 @@ def run_bigquery_query(sql_query: str):
     Limit results to 100 rows unless requested otherwise.
     """
     try:
+        client = get_bq_client()
         query_job = client.query(sql_query)
         results = query_job.result()
         
@@ -90,6 +98,7 @@ def fetch_report_pipelines(company_name: str, start_date: str = None, end_date: 
             params.append(bigquery.ScalarQueryParameter("roi_rep", "STRING", roi_rep))
             
         job_config = bigquery.QueryJobConfig(query_parameters=params)
+        client = get_bq_client()
         query_job = client.query(query, job_config=job_config)
         print("*" * 50)
         print(query )
@@ -111,6 +120,7 @@ def fetch_report_pipelines(company_name: str, start_date: str = None, end_date: 
         if "Not found: Table" in str(e) and "reports_pipeline" not in str(e):
              query = query.replace("report_pipelines", "reports_pipeline")
              try:
+                 client = get_bq_client()
                  query_job = client.query(query, job_config=bigquery.QueryJobConfig(query_parameters=params))
                  results = query_job.result()
                  rows = []

@@ -444,13 +444,19 @@ def save_to_bucket(local_file_path: str, bucket_name: str = "roitraining-dashboa
         return error_msg
 
 
-def create_and_share_google_doc(company_name: str, report_text: str, gcs_image_uri: str = None, share_email: str = "TRIP.Reports@roitraining.com", folder_id: str = None, local_image_path: str = None) -> str:
+def create_and_share_google_doc(company_name: str, report_text: str, gcs_image_uri: str = None, share_email: str = "TRIP.Reports@roitraining.com", folder_id: str = None, local_image_path: str = None, image_object = None) -> str:
     """
-    Creates a Google Doc with the report and infographic, then shares it as editor.
-    If folder_id is provided, moves the doc into that folder.
-    Prioritizes local_image_path by uploading it and generating a signed URL.
+    Prioritizes local_image_path or image_object by uploading/locating it and generating a reachable URL.
     """
     try:
+        # 0. Extract from image_object if provided
+        if image_object:
+            print(f"DEBUG: Processing image_object: {image_object}")
+            if not local_image_path:
+                local_image_path = image_object.get("infographic_path") or image_object.get("filename")
+            if not gcs_image_uri:
+                gcs_image_uri = image_object.get("gcs_uri")
+        
         scopes = [
             'https://www.googleapis.com/auth/documents', 
             'https://www.googleapis.com/auth/drive.file',
@@ -527,12 +533,25 @@ def create_and_share_google_doc(company_name: str, report_text: str, gcs_image_u
                 blob = bucket.blob(blob_name)
                 
                 # Generate Signed URL (This is a local calculation, no API call needed if we have the key)
-                public_url = blob.generate_signed_url(
-                    version="v4",
-                    expiration=datetime.timedelta(minutes=15),
-                    method="GET"
-                )
-                print(f"DEBUG: Generated Signed URL for existing GCS image: {public_url[:50]}...")
+                try:
+                    public_url = blob.generate_signed_url(
+                        version="v4",
+                        expiration=datetime.timedelta(minutes=15),
+                        method="GET"
+                    )
+                except Exception as sign_e:
+                    print(f"DEBUG: V4 Signing failed ({sign_e}), attempting fallback to public URL...")
+                    # FALLBACK: Make the blob public for the duration of the request
+                    # This is often needed on Cloud Run where signBlob permission is missing.
+                    try:
+                        blob.make_public()
+                        public_url = blob.public_url
+                        print(f"DEBUG: Made blob public: {public_url}")
+                    except Exception as pub_e:
+                        print(f"Warning: Could not make blob public ({pub_e}).")
+                        public_url = f"https://storage.googleapis.com/{bucket_name}/{blob_name}"
+
+                print(f"DEBUG: Reachable URL for Google Doc: {public_url[:50]}...")
             except Exception as e:
                 print(f"Warning: Failed to locate or sign existing upload ({e}). Falling back to GCS URI if provided.")
 

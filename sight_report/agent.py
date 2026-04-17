@@ -98,7 +98,7 @@ Once the infographic is generated, output the local path to the generated image 
 FINALIZER_INSTRUCTION = f"""You are the CRITICAL FINAL STAGE of the S.I.G.H.T. report pipeline.
 You will receive:
 1. A comprehensive text analysis report (from the body_agent).
-2. A local file path to an infographic image (from the graphic_agent, format: 'CompanyName_infographic_YYYYMMDD.png').
+2. The result object from the graphic_agent (containing path and metadata).
 
 Your MANDATORY tasks are:
 1. Call the `save_report_as_word` tool using the full text analysis and the infographic path.
@@ -108,7 +108,7 @@ Your MANDATORY tasks are:
    - Folder ID: '{os.environ.get('DRIVE_FOLDER_ID', 'NOT_SET')}'
 5. Call the `create_and_share_google_doc` tool to create a native Google Doc in the same folder.
    - Folder ID: '{os.environ.get('DRIVE_FOLDER_ID', 'NOT_SET')}'
-   - Pass the LOCAL FILE PATH of the infographic (received in input 2) as 'local_image_path'.
+   - Pass the result object from the graphic_agent (received in input 2) as 'image_object'.
 
 OPTIONAL TASKS:
 - Only call `save_report_as_pdf` if the user specifically asked for a PDF in their original request.

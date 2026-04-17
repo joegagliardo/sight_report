@@ -222,3 +222,29 @@ timestamp: "2026-04-17T17:13:08.989840Z"
 Timestamp: Fri Apr 17 14:08:19 EDT 2026
 Branch: main
 Prompt: when I submit this to cloud run with ths submit-build.sh it fails to deploy because it cannot find the from sight_logo.agent import sight_logo in the app.py. Do I need to put the logic like in the other modules to modify the search path so it finds this
+
+---
+Timestamp: Fri Apr 17 14:18:13 EDT 2026
+Branch: main
+Prompt: submit-build.sh fails: ERROR 2026-04-17T18:16:14.341966Z [severity: ERROR] [protoPayload.serviceName: Cloud Run] [protoPayload.methodName: ReplaceService] [protoPayload.resourceName: sight-report] Ready condition status changed to False for Service sight-report with message: The user-provided container failed to start and listen on the port defined provided by the PORT=8080 environment variable within the allocated timeout.
+
+---
+Timestamp: Fri Apr 17 14:31:04 EDT 2026
+Branch: main
+Prompt: it is still failing to build because it says the startup time is too short. can you modify this to allow it sufficient time to start: ERROR 2026-04-17T18:16:14.341966Z ... Ready condition status changed to False for Service sight-report with message: The user-provided container failed to start and listen on the port ...
+
+---
+Timestamp: Fri Apr 17 14:34:26 EDT 2026
+Branch: main
+Prompt: make those changes except keep gemini-2.5 because gemini-1.5 is not available
+
+---
+Timestamp: Fri Apr 17 14:45:32 EDT 2026
+Branch: main
+Prompt: when I run this on cloud run it no longer shows the infographic on the top of the workspace doc but it is included in the word docx. make sure that the create_and_share_google_doc is changed so that instead of passing the gcs_image_uri you pass a reference to the image object
+
+---
+Timestamp: Fri Apr 17 14:50:10 EDT 2026
+Branch: main
+Prompt: Infographic generated: reports/Rackspace_infographic_20260417.png
+❌ [TEST] Error running agent: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': 'Invalid JSON payload received. Unknown name "additional_properties" at \'tools[0].function_declarations[3].parameters.properties[6].value\': Cannot find field.' ... }}
