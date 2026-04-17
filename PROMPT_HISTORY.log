@@ -268,3 +268,23 @@ Prompt: modify the web app so that the only thing it returns is the infographic 
 Timestamp: Fri Apr 17 15:09:02 EDT 2026
 Branch: main
 Prompt: modify the code so that the google doc has clickable hyperlinks for the course recommendations
+
+---
+Timestamp: Fri Apr 17 18:35:33 EDT 2026
+Branch: main
+Prompt: when I run this in cloud run it gives the attached error when trying to generate the workspace doc file: ERROR 2026-04-17T22:33:45.690214Z ... google.genai.errors.ClientError: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': "Unable to submit request because create_and_share_google_doc functionDeclaration parameters.image_object schema didn't specify the schema type field. ..." ... }}
+
+---
+Timestamp: Fri Apr 17 18:40:49 EDT 2026
+Branch: main
+Prompt: modify app.py so it does not return the JSON object that is returned from the call to bigquery to the output window of the browser screen. it should only return the body of the report and the infographic in the webpage UI and a link to the google workspace doc not to the PDF
+
+---
+Timestamp: Fri Apr 17 18:53:28 EDT 2026
+Branch: main
+Prompt: modify app.py so it does not return the JSON object that is returned from the call to bigquery to the output window of the browser screen. it should only return the body of the report and the infographic in the webpage UI and a link to the google workspace doc not to the PDF (Follow-up: fixing ValueError/Pydantic errors in tools/infographic.py)
+
+---
+Timestamp: Fri Apr 17 18:58:12 EDT 2026
+Branch: main
+Prompt: when I directly run sight_report/agent.py it no longer is generating the workspace doc correctly, it gives the following output to the terminal stdout: ... DEBUG: Google API Error Content: { "error": { "code": 404, "message": "File not found: 1nZJFalSQBqTUeoyI4HUZRJQriIl8Cw-.", ... } }

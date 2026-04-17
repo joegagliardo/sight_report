@@ -176,7 +176,9 @@ def chat():
 
                     # Extract content using the recursive crawler
                     has_found_content = False
-                    if event.content:
+                    
+                    # Filter: Do not stream raw data from the BigQuery agent
+                    if event.content and getattr(event, 'agent_id', None) != "bq_agent":
                         for chunk in extract_content(event.content):
                             if chunk:
                                 if chunk.startswith("MEDIA:"):

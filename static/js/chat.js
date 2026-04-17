@@ -175,9 +175,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
             
-            if (!isFirstChunk) {
-                showDownloadButton(agentContentDiv, companyName);
-            }
+            // if (!isFirstChunk) {
+            //     showDownloadButton(agentContentDiv, companyName);
+            // }
 
         } catch (error) {
             agentContentDiv.innerText = 'Error: ' + error.message;

@@ -101,8 +101,8 @@ You will receive:
 2. The result object from the graphic_agent (containing path and metadata).
 
 Your MANDATORY tasks are:
-1. Call the `create_and_share_google_doc` tool to create a native Google Doc in a designated folder.
-   - Folder ID: '{os.environ.get('DRIVE_FOLDER_ID', 'NOT_SET')}'
+1. Call the `create_and_share_google_doc` tool to create a native Google Doc.
+   - Note: The tool will automatically use the correct destination folder.
    - Pass the result object from the graphic_agent (received in input 2) as 'image_object'.
 
 CONDITIONAL TASKS (Only if the user explicitly asks to "store" or "save" formal files):

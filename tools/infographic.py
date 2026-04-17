@@ -1,5 +1,6 @@
 import sys, os, io, json, re, datetime
 from typing import Any, Optional, List, Dict
+from pydantic import BaseModel, Field
 import vertexai
 from vertexai.generative_models import Part, Image
 from google.cloud import storage
@@ -444,16 +445,28 @@ def save_to_bucket(local_file_path: str, bucket_name: str = "roitraining-dashboa
         return error_msg
 
 
-def create_and_share_google_doc(company_name: str, report_text: str, gcs_image_uri: str = None, share_email: str = "TRIP.Reports@roitraining.com", folder_id: str = None, local_image_path: str = None, image_object = None) -> str:
+class DocImageObject(BaseModel):
+    infographic_path: Optional[str] = Field(None, description="Local path to the generated infographic png")
+    filename: Optional[str] = Field(None, description="Filename of the infographic")
+    status: Optional[str] = Field(None, description="Status of the generation process")
+
+def create_and_share_google_doc(company_name: str, report_text: str, gcs_image_uri: Optional[str] = None, share_email: str = "TRIP.Reports@roitraining.com", folder_id: Optional[str] = None, local_image_path: Optional[str] = None, image_object: Optional[Dict[str, Any]] = None) -> str:
     """
     Prioritizes local_image_path or image_object by uploading/locating it and generating a reachable URL.
     """
+    # 0. Resolve folder_id from environment if not provided (prevents LLM corruption of long IDs)
+    folder_id = folder_id or os.environ.get("DRIVE_FOLDER_ID")
+
     try:
         # 0. Extract from image_object if provided
         if image_object:
             print(f"DEBUG: Processing image_object: {image_object}")
+            # image_object is passed as a dict by the ADK
+            obj_path = image_object.get("infographic_path") or image_object.get("filename")
+                
             if not local_image_path:
-                local_image_path = image_object.get("infographic_path") or image_object.get("filename")
+                local_image_path = obj_path
+            
             if not gcs_image_uri:
                 gcs_image_uri = image_object.get("gcs_uri")
         
