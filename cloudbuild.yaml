@@ -24,6 +24,8 @@ steps:
       - '--region=us-central1'
       - '--allow-unauthenticated'
       - '--service-account=sight-report-agent@roitraining-dashboard.iam.gserviceaccount.com'
+      - '--memory=1Gi'
+      - '--set-env-vars=MODEL=gemini-2.5-flash,LOGO_BUCKET=roitraining-dashboard-grounding,DRIVE_FOLDER_ID=1nZJFalSQBqTUeoyI4HUZRJrQriIl8Cw-,PROJECT_ID=roitraining-dashboard'
       - '--quiet'
 
 substitutions:

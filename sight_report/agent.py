@@ -51,9 +51,9 @@ from firestore_utils import get_latest_instruction
 
 try:
     from course_search import EnhancedCourseSearchTool
-    from infographic import generate_trip_infographic, process_gcs_manifest_tool, save_report_as_pdf, save_to_bucket, create_and_share_google_doc, save_text_report_to_gcs, save_report_as_word
+    from infographic import generate_trip_infographic, process_gcs_manifest_tool, save_report_as_pdf, save_to_bucket, create_and_share_google_doc, save_text_report_to_gcs, save_report_as_word, upload_file_to_drive
 except ImportError:
-    from tools import EnhancedCourseSearchTool, generate_trip_infographic, process_gcs_manifest_tool, save_report_as_pdf, save_to_bucket, create_and_share_google_doc, save_text_report_to_gcs, save_report_as_word
+    from tools import EnhancedCourseSearchTool, generate_trip_infographic, process_gcs_manifest_tool, save_report_as_pdf, save_to_bucket, create_and_share_google_doc, save_text_report_to_gcs, save_report_as_word, upload_file_to_drive
 
 # Environment already loaded above
 
@@ -95,7 +95,7 @@ Your ONLY job is to call the `generate_trip_infographic` tool using the 'company
 Once the infographic is generated, output the local path to the generated image file.
 """
 
-FINALIZER_INSTRUCTION = """You are the CRITICAL FINAL STAGE of the S.I.G.H.T. report pipeline.
+FINALIZER_INSTRUCTION = f"""You are the CRITICAL FINAL STAGE of the S.I.G.H.T. report pipeline.
 You will receive:
 1. A comprehensive text analysis report (from the body_agent).
 2. A local file path to an infographic image (from the graphic_agent, format: 'CompanyName_infographic_YYYYMMDD.png').
@@ -104,13 +104,17 @@ Your MANDATORY tasks are:
 1. Call the `save_report_as_word` tool using the full text analysis and the infographic path.
 2. Call the `save_to_bucket` tool to upload that Word document. The destination path in the bucket should be: reports/CompanyName_TRIP_Report_YYYYMMDD.docx (ensure you use the 'reports/' prefix).
 3. Call the `save_text_report_to_gcs` tool to save the raw text analysis.
+4. Call the `upload_file_to_drive` tool to upload the Word document to the designated Google Drive folder.
+   - Folder ID: '{os.environ.get('DRIVE_FOLDER_ID', 'NOT_SET')}'
+5. Call the `create_and_share_google_doc` tool to create a native Google Doc in the same folder.
+   - Folder ID: '{os.environ.get('DRIVE_FOLDER_ID', 'NOT_SET')}'
+   - Pass the LOCAL FILE PATH of the infographic (received in input 2) as 'local_image_path'.
 
 OPTIONAL TASKS:
 - Only call `save_report_as_pdf` if the user specifically asked for a PDF in their original request.
-- Only call `create_and_share_google_doc` if the user specifically asked for a Google Doc.
 
 DO NOT just summarize. You MUST call the mandatory tools to complete the pipeline.
-Finally, provide a summary with the GCS links to the Word document (.docx) and the raw text.
+Finally, provide a summary with the GCS links AND the Google Drive links for both the Word document and the native Google Doc.
 """
 
 # --- Define the Agents ---
@@ -153,16 +157,16 @@ pdf_finalizer = Agent(
     name="pdf_finalizer",
     model=os.environ.get("MODEL", "gemini-2.5-flash"),
     instruction=FINALIZER_INSTRUCTION,
-    tools=[save_report_as_pdf, save_report_as_word, save_to_bucket, create_and_share_google_doc, save_text_report_to_gcs]
+    tools=[save_report_as_pdf, save_report_as_word, save_to_bucket, create_and_share_google_doc, save_text_report_to_gcs, upload_file_to_drive]
 )
 
 # --- Orchestrate the Full Pipeline ---
-sight_maker = SequentialAgent(
-    name="sight_maker",
+sight_agent = SequentialAgent(
+    name="sight_agent",
     sub_agents=[bq_agent, parallel_orchestrator, pdf_finalizer]
 )
 
-root_agent = sight_maker
+root_agent = sight_agent
 
 if __name__ == "__main__":
     from google.adk.runners import Runner
@@ -175,7 +179,7 @@ if __name__ == "__main__":
         # Initialize a local runner for testing
         runner = Runner(
             app_name="sight_report_test",
-            agent=sight_maker,
+            agent=sight_agent,
             session_service=InMemorySessionService(),
             auto_create_session=True
         )
