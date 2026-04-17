@@ -6,6 +6,7 @@ from google.cloud import storage
 from fpdf import FPDF
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 import docx
+
 from docx.shared import Inches, Pt
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 
