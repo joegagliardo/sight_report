@@ -217,3 +217,8 @@ textPayload: "Traceback (most recent call last):
     from sight_logo.agent import sight_logo"
 ModuleNotFoundError: No module named 'sight_logo'"
 timestamp: "2026-04-17T17:13:08.989840Z"
+
+---
+Timestamp: Fri Apr 17 14:08:19 EDT 2026
+Branch: main
+Prompt: when I submit this to cloud run with ths submit-build.sh it fails to deploy because it cannot find the from sight_logo.agent import sight_logo in the app.py. Do I need to put the logic like in the other modules to modify the search path so it finds this
