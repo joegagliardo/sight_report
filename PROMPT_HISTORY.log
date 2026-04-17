@@ -201,3 +201,19 @@ Timestamp: Mon Apr 13 18:07:18 EDT 2026
 Branch: main
 Prompt: can you modify this code that instead of storing the infographic as last_infographic.png it stores it as CompanyName_infographic_YYYMMDD.png to match the name of the text file. And also tell it to combine the infographic and text file into a PDF with a similar name with the infographic on the first page and the text on the subsequent pages. Do not create the google doc, but leave the code there as an option.
 ---
+
+---
+Timestamp: Fri Apr 17 13:48:41 EDT 2026
+Branch: main
+Prompt: when I try the submit-build.sh I get the following errors: errorGroups: [1]
+insertId: "69e26a24000f1a902e3f9c7b"
+labels: {1}
+logName: "projects/roitraining-dashboard/logs/run.googleapis.com%2Fstderr"
+receiveTimestamp: "2026-04-17T17:13:08.995997993Z"
+resource: {2}
+severity: "ERROR"
+textPayload: "Traceback (most recent call last):
+  File "/app/app.py", line 13, in <module>
+    from sight_logo.agent import sight_logo"
+ModuleNotFoundError: No module named 'sight_logo'"
+timestamp: "2026-04-17T17:13:08.989840Z"
