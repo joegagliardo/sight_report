@@ -101,6 +101,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 return `<a href="${finalUrl}" target="_blank" rel="noopener noreferrer" style="color: var(--accent-blue); text-decoration: underline;">${title}</a>`;
             })
+            // Auto-link plain URLs that aren't already part of a markdown link
+            .replace(/(?<!href=")(?<!">)(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" style="color: var(--accent-blue); text-decoration: underline;">$1</a>')
             .replace(/^- (.*)$/gm, '<li>$1</li>')
             .replace(/(<li>.*<\/li>)/gms, '<ul>$1</ul>')
             .replace(/\n/g, '<br>');

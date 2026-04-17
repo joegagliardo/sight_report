@@ -676,7 +676,8 @@ def create_and_share_google_doc(company_name: str, report_text: str, gcs_image_u
             fileId=doc_id, 
             body=permission, 
             fields='id',
-            supportsAllDrives=True
+            supportsAllDrives=True,
+            sendNotificationEmail=True
         ).execute()
         
         doc_url = f"https://docs.google.com/document/d/{doc_id}/edit"

@@ -136,34 +136,47 @@ def chat():
                 # 2. Universal Extractor (recursive)
                 def extract_content(obj):
                     """Yields strings for text and data URLs for images."""
+                    if obj is None:
+                        return
+                        
                     if isinstance(obj, str):
                         yield obj
                     elif isinstance(obj, dict):
-                        # Handle text
-                        if "text" in obj and isinstance(obj["text"], str):
-                            yield obj["text"]
-                        # Handle inline_data (base64 images)
+                        # 1. Direct text field
+                        text = obj.get("text")
+                        if isinstance(text, str) and text.strip():
+                            yield text
+                        
+                        # 2. Part-like structure (text or inline_data)
                         if "inline_data" in obj:
                             data = obj["inline_data"].get("data")
                             mime = obj["inline_data"].get("mime_type")
                             if data and mime:
                                 yield f"MEDIA:data:{mime};base64,{data}"
-                        # Recurse
-                        for v in obj.values():
+                        
+                        # 3. Recurse into all dictionary values
+                        for k, v in obj.items():
+                            # Skip recurse into 'text' if we already handled it
+                            if k == "text": continue
                             yield from extract_content(v)
+                            
+                    elif isinstance(obj, list):
+                        for item in obj:
+                            yield from extract_content(item)
+                    
+                    # Handle ADK/GenAI internal objects via duck typing
                     elif hasattr(obj, "parts"): # Content objects
                         for part in obj.parts:
                             yield from extract_content(part)
                     elif hasattr(obj, "text") and obj.text: # Part objects
                         yield obj.text
                     elif hasattr(obj, "inline_data") and obj.inline_data: # Image Part
-                        data = obj.inline_data.data
-                        mime = obj.inline_data.mime_type
+                        data = getattr(obj.inline_data, 'data', None)
+                        mime = getattr(obj.inline_data, 'mime_type', None)
                         if data and mime:
                             yield f"MEDIA:data:{mime};base64,{data}"
-                    elif isinstance(obj, list):
-                        for item in obj:
-                            yield from extract_content(item)
+                    elif hasattr(obj, "to_dict"):
+                        yield from extract_content(obj.to_dict())
 
                 # 3. Stream Events
                 async for event in runner.run_async(
