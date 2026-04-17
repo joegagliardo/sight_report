@@ -6,7 +6,6 @@ from google.cloud import storage
 from fpdf import FPDF
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 import docx
-
 from docx.shared import Inches, Pt
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 
@@ -14,6 +13,7 @@ from google.auth import default
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+from googleapiclient.http import MediaFileUpload
 
 from pyairtable import Api
 
@@ -444,9 +444,11 @@ def save_to_bucket(local_file_path: str, bucket_name: str = "roitraining-dashboa
         return error_msg
 
 
-def create_and_share_google_doc(company_name: str, report_text: str, gcs_image_uri: str = None, share_email: str = "joegagliardo@gmail.com") -> str:
+def create_and_share_google_doc(company_name: str, report_text: str, gcs_image_uri: str = None, share_email: str = "joegagliardo@gmail.com", folder_id: str = None, local_image_path: str = None) -> str:
     """
     Creates a Google Doc with the report and infographic, then shares it as editor.
+    If folder_id is provided, moves the doc into that folder.
+    Prioritizes local_image_path by uploading it and generating a signed URL.
     """
     try:
         scopes = [
@@ -456,8 +458,12 @@ def create_and_share_google_doc(company_name: str, report_text: str, gcs_image_u
         ]
         
         creds = None
-        # Explicitly check for Service Account key path in environment
-        creds_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+        # Use hardcoded path if running locally (no K_SERVICE env var), otherwise use environment
+        if not os.environ.get("K_SERVICE"):
+            creds_path = "/Users/joey/Dev/sight_report/service-account-key.json"
+        else:
+            creds_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+            
         if creds_path and os.path.exists(creds_path):
             print(f"DEBUG: Using explicit service account file: {creds_path}")
             creds = service_account.Credentials.from_service_account_file(creds_path, scopes=scopes)
@@ -478,9 +484,24 @@ def create_and_share_google_doc(company_name: str, report_text: str, gcs_image_u
         drive_service = build('drive', 'v3', credentials=creds)
         
         title = f"{company_name}_{datetime.datetime.now().strftime('%Y%m%d')}"
-        doc = docs_service.documents().create(body={'title': title}).execute()
-        doc_id = doc.get('documentId')
         
+        # We use the Drive API to create the file because it is already verified to work for this Service Account, 
+        # whereas the Docs API create() sometimes fails with obscure 403s.
+        doc_metadata = {
+            'name': title,
+            'mimeType': 'application/vnd.google-apps.document'
+        }
+        if folder_id:
+            doc_metadata['parents'] = [folder_id]
+            
+        file = drive_service.files().create(
+            body=doc_metadata, 
+            fields='id',
+            supportsAllDrives=True
+        ).execute()
+        doc_id = file.get('id')
+        print(f"Created Google Doc {doc_id} using Drive API" + (f" in folder {folder_id}" if folder_id else ""))
+
         requests = []
         requests.append({
             'insertText': {
@@ -489,26 +510,73 @@ def create_and_share_google_doc(company_name: str, report_text: str, gcs_image_u
             }
         })
         
-        if gcs_image_uri:
+        public_url = None
+        
+        # Priority: Local Image Path (Find existing upload and Sign)
+        if local_image_path:
+            try:
+                # We know generate_trip_infographic already uploaded the file to gs://{bucket}/reports/{filename}
+                # So we just find it and sign it to avoid 403 upload errors.
+                filename = os.path.basename(local_image_path)
+                bucket_name = os.environ.get("LOGO_BUCKET", "roitraining-dashboard-grounding")
+                blob_name = f"reports/{filename}"
+                
+                print(f"DEBUG: Locating existing upload for Google Doc: gs://{bucket_name}/{blob_name}")
+                storage_client = storage.Client(credentials=creds, project=os.environ.get("PROJECT_ID", "roitraining-dashboard"))
+                bucket = storage_client.bucket(bucket_name)
+                blob = bucket.blob(blob_name)
+                
+                # Generate Signed URL (This is a local calculation, no API call needed if we have the key)
+                public_url = blob.generate_signed_url(
+                    version="v4",
+                    expiration=datetime.timedelta(minutes=15),
+                    method="GET"
+                )
+                print(f"DEBUG: Generated Signed URL for existing GCS image: {public_url[:50]}...")
+            except Exception as e:
+                print(f"Warning: Failed to locate or sign existing upload ({e}). Falling back to GCS URI if provided.")
+
+        # Fallback: GCS URI (Sign)
+        if not public_url and gcs_image_uri:
             if gcs_image_uri.startswith("gs://"):
-                parts = gcs_image_uri[5:].split("/", 1)
-                bucket = parts[0]
-                path = parts[1]
-                public_url = f"https://storage.googleapis.com/{bucket}/{path}"
+                try:
+                    parts = gcs_image_uri[5:].split("/", 1)
+                    bucket_name = parts[0]
+                    blob_name = parts[1]
+                    
+                    storage_client = storage.Client(credentials=creds, project=os.environ.get("PROJECT_ID", "roitraining-dashboard"))
+                    bucket = storage_client.bucket(bucket_name)
+                    blob = bucket.blob(blob_name)
+                    
+                    public_url = blob.generate_signed_url(
+                        version="v4",
+                        expiration=datetime.timedelta(minutes=15),
+                        method="GET"
+                    )
+                    print(f"DEBUG: Generated Signed URL for GCS image: {public_url[:50]}...")
+                except Exception as sign_e:
+                    print(f"Warning: Could not sign GCS URI ({sign_e}). Falling back to public link.")
+                    public_url = f"https://storage.googleapis.com/{bucket_name}/{blob_name}"
             else:
                 public_url = gcs_image_uri
 
+        # Insert Image and Text in reverse order of appearance (since we insert at index 1)
+        # Final Order: [Image] -> [\n\n] -> [report_text]
+        
+        # 1. Insert Image (Must be last request for index 1 to be at the very top)
+        if public_url:
+            # We add the newline spacing FIRST so the image can take index 1
+            requests.append({
+                'insertText': {
+                    'location': {'index': 1},
+                    'text': "\n\n"
+                }
+            })
             requests.append({
                 'insertInlineImage': {
                     'location': {'index': 1},
                     'uri': public_url,
                     'objectSize': {'width': {'magnitude': 500, 'unit': 'PT'}}
-                }
-            })
-            requests.append({
-                'insertText': {
-                    'location': {'index': 1},
-                    'text': "\n\n"
                 }
             })
 
@@ -519,7 +587,13 @@ def create_and_share_google_doc(company_name: str, report_text: str, gcs_image_u
             'role': 'writer',
             'emailAddress': share_email
         }
-        drive_service.permissions().create(fileId=doc_id, body=permission, fields='id').execute()
+        # We include supportsAllDrives=True to ensure this works in Shared Drive environments
+        drive_service.permissions().create(
+            fileId=doc_id, 
+            body=permission, 
+            fields='id',
+            supportsAllDrives=True
+        ).execute()
         
         doc_url = f"https://docs.google.com/document/d/{doc_id}/edit"
         print(f"Successfully created and shared Google Doc: {doc_url}")
@@ -623,5 +697,63 @@ def save_report_as_word(company_name: str, report_text: str, infographic_path: s
         
     except Exception as e:
         error_msg = f"Error generating Word document: {str(e)}"
+        print(error_msg)
+        return error_msg
+
+def upload_file_to_drive(local_file_path: str, folder_id: str) -> str:
+    """
+    Uploads a local file to a designated Google Drive folder.
+    Returns the file metadata or error message.
+    """
+    try:
+        scopes = ['https://www.googleapis.com/auth/drive.file', 'https://www.googleapis.com/auth/drive']
+        
+        creds = None
+        if not os.environ.get("K_SERVICE"):
+            creds_path = "/Users/joey/Dev/sight_report/service-account-key.json"
+        else:
+            creds_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+            
+        if creds_path and os.path.exists(creds_path):
+            creds = service_account.Credentials.from_service_account_file(creds_path, scopes=scopes)
+        else:
+            creds, _ = default(scopes=scopes)
+            if hasattr(creds, 'with_scopes'):
+                creds = creds.with_scopes(scopes)
+
+        drive_service = build('drive', 'v3', credentials=creds)
+        
+        file_metadata = {
+            'name': os.path.basename(local_file_path),
+            'parents': [folder_id]
+        }
+        
+        # Determine mime type based on extension
+        ext = os.path.splitext(local_file_path)[1].lower()
+        mime_type = 'application/octet-stream'
+        if ext == '.docx':
+            mime_type = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        elif ext == '.pdf':
+            mime_type = 'application/pdf'
+        elif ext == '.txt':
+            mime_type = 'text/plain'
+        elif ext in ['.png', '.jpg', '.jpeg']:
+            mime_type = f'image/{ext[1:]}' if ext != '.jpg' else 'image/jpeg'
+
+        media = MediaFileUpload(local_file_path, mimetype=mime_type, resumable=True)
+        
+        file = drive_service.files().create(
+            body=file_metadata,
+            media_body=media,
+            fields='id, webViewLink',
+            supportsAllDrives=True
+        ).execute()
+        
+        drive_link = file.get('webViewLink')
+        print(f"Successfully uploaded {local_file_path} to Google Drive: {drive_link}")
+        return drive_link
+
+    except Exception as e:
+        error_msg = f"Error uploading to Google Drive: {str(e)}"
         print(error_msg)
         return error_msg
