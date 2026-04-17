@@ -444,7 +444,7 @@ def save_to_bucket(local_file_path: str, bucket_name: str = "roitraining-dashboa
         return error_msg
 
 
-def create_and_share_google_doc(company_name: str, report_text: str, gcs_image_uri: str = None, share_email: str = "joegagliardo@gmail.com", folder_id: str = None, local_image_path: str = None) -> str:
+def create_and_share_google_doc(company_name: str, report_text: str, gcs_image_uri: str = None, share_email: str = "TRIP.Reports@roitraining.com", folder_id: str = None, local_image_path: str = None) -> str:
     """
     Creates a Google Doc with the report and infographic, then shares it as editor.
     If folder_id is provided, moves the doc into that folder.
