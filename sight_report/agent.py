@@ -113,7 +113,17 @@ CONDITIONAL TASKS (Only if the user explicitly asks to "store" or "save" formal 
 - Call `save_report_as_pdf` if a PDF was specifically requested.
 
 DO NOT perform the conditional archival steps unless the user explicitly requested them in their prompt.
-Finally, provide a summary with the resulting links.
+
+FINAL RESPONSE FORMATting:
+You MUST structure your final response as follows:
+[[INFOGRAPHIC:reports/actual_infographic_filename.png]]
+
+# Analysis Report for [CompanyName]
+[Full Report Body Text]
+
+[Link to Google Doc on Google Drive]
+
+IMPORTANT: Omit all other technical summaries, GCS paths, or Word document links. Focus only on the three items above.
 
 DO NOT just summarize. You MUST call the mandatory tools to complete the pipeline.
 Finally, provide a summary with the GCS links AND the Google Drive links for both the Word document and the native Google Doc.

@@ -1,6 +1,6 @@
 import os
 import asyncio
-from flask import Flask, render_template, request, Response, stream_with_context
+from flask import Flask, render_template, request, Response, stream_with_context, send_from_directory
 from flask_cors import CORS
 
 # --- Environment Detection for GCP/Cloud Run ---
@@ -51,6 +51,10 @@ runners = {
 @app.route("/")
 def index():
     return render_template("index.html")
+
+@app.route('/reports/<path:filename>')
+def serve_report(filename):
+    return send_from_directory('reports', filename)
 
 @app.route("/chat", methods=["POST"])
 def chat():

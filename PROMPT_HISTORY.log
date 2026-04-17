@@ -258,3 +258,13 @@ Prompt: modify the code so that it does not save the word doc and the individual
 Timestamp: Fri Apr 17 14:59:37 EDT 2026
 Branch: main
 Prompt: modify it so that the name it makes for the google doc is the same as it would make for the docx meaning the companyname_TRIP_Report_YYYYMMDD
+
+---
+Timestamp: Fri Apr 17 15:02:55 EDT 2026
+Branch: main
+Prompt: modify the web app so that the only thing it returns is the infographic and the body of the report and then a clickable hyperlink to the google drive file it created.
+
+---
+Timestamp: Fri Apr 17 15:09:02 EDT 2026
+Branch: main
+Prompt: modify the code so that the google doc has clickable hyperlinks for the course recommendations

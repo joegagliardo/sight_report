@@ -86,6 +86,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const formatText = (text) => {
         return text
+            .replace(/\[\[INFOGRAPHIC:(.*?)\]\]/g, (match, path) => {
+                const cleanPath = path.trim();
+                return `<div class="generated-image-container">
+                    <img src="/${cleanPath}" class="generated-image" alt="Infographic" loading="lazy">
+                </div>`;
+            })
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
             .replace(/\[(.*?)\]\((.*?)\)/g, (match, title, url) => {
                 let finalUrl = url.trim();

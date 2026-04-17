@@ -511,12 +511,62 @@ def create_and_share_google_doc(company_name: str, report_text: str, gcs_image_u
         print(f"Created Google Doc {doc_id} using Drive API" + (f" in folder {folder_id}" if folder_id else ""))
 
         requests = []
+        
+        # 1. Parse Markdown links and prepare clean text
+        links = []
+        clean_text = ""
+        last_idx = 0
+        # Regex for [text](url)
+        for match in re.finditer(r'\[(.*?)\]\((.*?)\)', report_text):
+            # Text before the link
+            clean_text += report_text[last_idx:match.start()]
+            
+            # Start offset in clean_text
+            start_offset = len(clean_text) + 1
+            link_text = match.group(1)
+            link_url = match.group(2)
+            
+            clean_text += link_text
+            # End offset
+            end_offset = len(clean_text) + 1
+            
+            links.append({
+                'start': start_offset,
+                'end': end_offset,
+                'url': link_url
+            })
+            last_idx = match.end()
+        
+        clean_text += report_text[last_idx:]
+
+        # 2. Insert the clean text body
         requests.append({
             'insertText': {
                 'location': {'index': 1},
-                'text': report_text
+                'text': clean_text
             }
         })
+
+        # 3. Add styling for each link
+        for link in links:
+            requests.append({
+                'updateTextStyle': {
+                    'range': {
+                        'startIndex': link['start'],
+                        'endIndex': link['end']
+                    },
+                    'textStyle': {
+                        'link': {'url': link['url']},
+                        'foregroundColor': {
+                            'color': {
+                                'rgbColor': {'blue': 0.8, 'green': 0.3, 'red': 0.1}
+                            }
+                        },
+                        'underline': True
+                    },
+                    'fields': 'link,foregroundColor,underline'
+                }
+            })
         
         public_url = None
         
