@@ -45,7 +45,7 @@ def post_prompt():
 # Initialize runners for different agents
 runners = {
     "sight_reader": InMemoryRunner(agent=sight_agent),
-    "sight_logo": InMemoryRunner(agent=sight_logo)
+    # "sight_logo": InMemoryRunner(agent=sight_logo)
 }
 
 @app.route("/")
@@ -69,47 +69,47 @@ def chat():
 
     # --- Image Injection Logic for sight_logo ---
     parts = [types.Part(text=user_input)]
-    if agent_name == "sight_logo":
-        import re
-        # 1. Look for full gs:// paths
-        gs_pattern = r'gs://[a-zA-Z0-9\._\-]+/[\w\.\-\/]+\.(?:png|jpg|jpeg|webp)'
-        found_gs_uris = re.findall(gs_pattern, user_input)
+    # if agent_name == "sight_logo":
+    #     import re
+    #     # 1. Look for full gs:// paths
+    #     gs_pattern = r'gs://[a-zA-Z0-9\._\-]+/[\w\.\-\/]+\.(?:png|jpg|jpeg|webp)'
+    #     found_gs_uris = re.findall(gs_pattern, user_input)
         
-        # 2. Look for simple filenames (fallback)
-        filename_pattern = r'\b[\w\-]+\.(?:png|jpg|jpeg|webp)\b'
-        all_matches = re.finditer(filename_pattern, user_input)
+    #     # 2. Look for simple filenames (fallback)
+    #     filename_pattern = r'\b[\w\-]+\.(?:png|jpg|jpeg|webp)\b'
+    #     all_matches = re.finditer(filename_pattern, user_input)
         
-        # Use a set to avoid duplicates and track what's already handled by gs://
-        processed_uris = set()
+    #     # Use a set to avoid duplicates and track what's already handled by gs://
+    #     processed_uris = set()
         
-        # Handle full URIs first
-        for uri in found_gs_uris:
-            if uri not in processed_uris:
-                ext = uri.split('.')[-1].lower()
-                mime_type = f"image/{ext}" if ext != 'jpg' else "image/jpeg"
-                print(f"💉 Injecting GS URI: {uri} ({mime_type})")
-                parts.append(types.Part(
-                    file_data=types.FileData(mime_type=mime_type, file_uri=uri)
-                ))
-                processed_uris.add(uri)
+    #     # Handle full URIs first
+    #     for uri in found_gs_uris:
+    #         if uri not in processed_uris:
+    #             ext = uri.split('.')[-1].lower()
+    #             mime_type = f"image/{ext}" if ext != 'jpg' else "image/jpeg"
+    #             print(f"💉 Injecting GS URI: {uri} ({mime_type})")
+    #             parts.append(types.Part(
+    #                 file_data=types.FileData(mime_type=mime_type, file_uri=uri)
+    #             ))
+    #             processed_uris.add(uri)
         
-        # Handle simple filenames that weren't part of a gs:// path
-        bucket = os.getenv("LOGO_BUCKET", "roitraining-dashboard.appspot.com")
-        for match in all_matches:
-            filename = match.group(0)
-            # Check if this filename is part of a gs:// path already found
-            is_in_gs = any(filename in uri for uri in found_gs_uris)
+    #     # Handle simple filenames that weren't part of a gs:// path
+    #     bucket = os.getenv("LOGO_BUCKET", "roitraining-dashboard.appspot.com")
+    #     for match in all_matches:
+    #         filename = match.group(0)
+    #         # Check if this filename is part of a gs:// path already found
+    #         is_in_gs = any(filename in uri for uri in found_gs_uris)
             
-            if not is_in_gs:
-                file_uri = f"gs://{bucket}/{filename}"
-                if file_uri not in processed_uris:
-                    ext = filename.split('.')[-1].lower()
-                    mime_type = f"image/{ext}" if ext != 'jpg' else "image/jpeg"
-                    print(f"💉 Injecting fallback filename: {file_uri} ({mime_type})")
-                    parts.append(types.Part(
-                        file_data=types.FileData(mime_type=mime_type, file_uri=file_uri)
-                    ))
-                    processed_uris.add(file_uri)
+    #         if not is_in_gs:
+    #             file_uri = f"gs://{bucket}/{filename}"
+    #             if file_uri not in processed_uris:
+    #                 ext = filename.split('.')[-1].lower()
+    #                 mime_type = f"image/{ext}" if ext != 'jpg' else "image/jpeg"
+    #                 print(f"💉 Injecting fallback filename: {file_uri} ({mime_type})")
+    #                 parts.append(types.Part(
+    #                     file_data=types.FileData(mime_type=mime_type, file_uri=file_uri)
+    #                 ))
+    #                 processed_uris.add(file_uri)
 
     # Build the message content using ADK/GenAI types
     new_message = types.Content(parts=parts)
