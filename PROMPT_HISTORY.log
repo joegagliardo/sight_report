@@ -304,3 +304,6 @@ the code crashes because the reports folder does not exists, can you make it cre
 
 Fri Apr 17 20:40:43 EDT 2026: branch main
 this code created three google drive files. the first two were empty and the last was correct
+
+Fri Apr 17 21:04:30 EDT 2026: branch main
+when I run this locally it works, when I run it on cloud run it fails ... can you make it use the infographic that is in the reports subdirectory of the local machine and not the gcs bucket version... what is the alternative solution
