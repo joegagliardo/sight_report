@@ -298,3 +298,9 @@ Prompt: this is working well now, but it is not sending the email with the link 
 Timestamp: Fri Apr 17 19:14:51 EDT 2026
 Branch: main
 Prompt: it returned a link at the end of the output it returns to the GUI but it's not a clickable hyperlink, can you make it so it's clickable instead of this: https://docs.google.com/document/d/17rkcRLU_-fzx2Vul-lueHfMbVHIQCf5LcJcESRjJYIM/edit
+
+Fri Apr 17 20:23:51 EDT 2026: branch main
+the code crashes because the reports folder does not exists, can you make it create it if it's not there: joey@RebelMax:Dev/sight_report <main> % ... [traceback omitted for brevity] ... FileNotFoundError: [Errno 2] No such file or directory: 'reports/Rackspace_infographic_20260417.png'
+
+Fri Apr 17 20:40:43 EDT 2026: branch main
+this code created three google drive files. the first two were empty and the last was correct

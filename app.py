@@ -10,7 +10,7 @@ if os.environ.get("K_SERVICE"):
     os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "1"
 
 from sight_report.agent import sight_agent
-from sight_logo.agent import sight_logo
+# from sight_logo.agent import sight_logo
 from google.adk.runners import InMemoryRunner, types
 from google.adk.events import Event
 import firestore_utils

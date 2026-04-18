@@ -344,16 +344,18 @@ def generate_trip_infographic(data):
     # Save Output
     date_str = datetime.datetime.now().strftime("%Y%m%d")
     clean_company = data["company"].replace(" ", "_")
-    output_path = f"reports/{clean_company}_infographic_{date_str}.png"
+    output_dir = "reports"
+    os.makedirs(output_dir, exist_ok=True)
+    output_path = f"{output_dir}/{clean_company}_infographic_{date_str}.png"
     img.save(output_path)
     
     # Try to save to bucket if possible
-    # try:
-    #     # Save to the 'reports' folder in GCS using only the filename
-    #     gcs_dest = f"reports/{os.path.basename(output_path)}"
-    #     save_to_bucket(output_path, 'roitraining-dashboard-grounding', gcs_dest)
-    # except Exception as e:
-    #     print(f"Warning: Could not upload infographic to bucket ({e})")
+    try:
+        # Save to the 'reports' folder in GCS using only the filename
+        gcs_dest = f"reports/{os.path.basename(output_path)}"
+        save_to_bucket(output_path, 'roitraining-dashboard-grounding', gcs_dest)
+    except Exception as e:
+        print(f"Warning: Could not upload infographic to bucket ({e})")
     
     print(f"Infographic generated: {output_path}")
     
@@ -410,7 +412,9 @@ def save_report_as_pdf(company_name: str, report_text: str, infographic_path: st
         
         date_str = datetime.datetime.now().strftime("%Y%m%d")
         clean_company = company_name.replace(" ", "_")
-        local_pdf = f"reports/{clean_company}_TRIP_Report_{date_str}.pdf"
+        output_dir = "reports"
+        os.makedirs(output_dir, exist_ok=True)
+        local_pdf = f"{output_dir}/{clean_company}_TRIP_Report_{date_str}.pdf"
         pdf.output(local_pdf)
         
         print(f"Successfully generated PDF: {local_pdf}")
@@ -508,20 +512,52 @@ def create_and_share_google_doc(company_name: str, report_text: str, gcs_image_u
         
         # We use the Drive API to create the file because it is already verified to work for this Service Account, 
         # whereas the Docs API create() sometimes fails with obscure 403s.
-        doc_metadata = {
-            'name': title,
-            'mimeType': 'application/vnd.google-apps.document'
-        }
-        if folder_id:
-            doc_metadata['parents'] = [folder_id]
+        # Check if file with same name already exists in target folder to avoid duplicates on retry
+        # We look for a file with the same name in the specific parent folder
+        query = f"name = '{title}' and '{folder_id}' in parents and trashed = false" if folder_id else f"name = '{title}' and trashed = false"
+        
+        try:
+            existing_files = drive_service.files().list(
+                q=query,
+                fields='files(id)',
+                supportsAllDrives=True,
+                includeItemsFromAllDrives=True
+            ).execute()
             
-        file = drive_service.files().create(
-            body=doc_metadata, 
-            fields='id',
-            supportsAllDrives=True
-        ).execute()
-        doc_id = file.get('id')
-        print(f"Created Google Doc {doc_id} using Drive API" + (f" in folder {folder_id}" if folder_id else ""))
+            if existing_files.get('files'):
+                doc_id = existing_files['files'][0]['id']
+                print(f"DEBUG: Found existing Google Doc {doc_id} with name '{title}', reusing it.")
+            else:
+                doc_metadata = {
+                    'name': title,
+                    'mimeType': 'application/vnd.google-apps.document'
+                }
+                if folder_id:
+                    doc_metadata['parents'] = [folder_id]
+                    
+                file = drive_service.files().create(
+                    body=doc_metadata, 
+                    fields='id',
+                    supportsAllDrives=True
+                ).execute()
+                doc_id = file.get('id')
+                print(f"Created Google Doc {doc_id} using Drive API" + (f" in folder {folder_id}" if folder_id else ""))
+        except Exception as search_e:
+            print(f"Warning: Failed to search for existing files ({search_e}). Proceeding to create new file.")
+            doc_metadata = {
+                'name': title,
+                'mimeType': 'application/vnd.google-apps.document'
+            }
+            if folder_id:
+                doc_metadata['parents'] = [folder_id]
+                
+            file = drive_service.files().create(
+                body=doc_metadata, 
+                fields='id',
+                supportsAllDrives=True
+            ).execute()
+            doc_id = file.get('id')
+            print(f"Created Google Doc {doc_id} using Drive API (fallback)")
 
         requests = []
         
@@ -774,7 +810,9 @@ def save_report_as_word(company_name: str, report_text: str, infographic_path: s
 
         date_str = datetime.datetime.now().strftime("%Y%m%d")
         clean_company = company_name.replace(" ", "_")
-        local_docx = f"reports/{clean_company}_TRIP_Report_{date_str}.docx"
+        output_dir = "reports"
+        os.makedirs(output_dir, exist_ok=True)
+        local_docx = f"{output_dir}/{clean_company}_TRIP_Report_{date_str}.docx"
         
         doc.save(local_docx)
         print(f"Successfully generated Word document: {local_docx}")
@@ -807,12 +845,7 @@ def upload_file_to_drive(local_file_path: str, folder_id: str) -> str:
                 creds = creds.with_scopes(scopes)
 
         drive_service = build('drive', 'v3', credentials=creds)
-        
-        file_metadata = {
-            'name': os.path.basename(local_file_path),
-            'parents': [folder_id]
-        }
-        
+
         # Determine mime type based on extension
         ext = os.path.splitext(local_file_path)[1].lower()
         mime_type = 'application/octet-stream'
@@ -826,13 +859,50 @@ def upload_file_to_drive(local_file_path: str, folder_id: str) -> str:
             mime_type = f'image/{ext[1:]}' if ext != '.jpg' else 'image/jpeg'
 
         media = MediaFileUpload(local_file_path, mimetype=mime_type, resumable=True)
+        filename = os.path.basename(local_file_path)
+        query = f"name = '{filename}' and '{folder_id}' in parents and trashed = false"
         
-        file = drive_service.files().create(
-            body=file_metadata,
-            media_body=media,
-            fields='id, webViewLink',
-            supportsAllDrives=True
-        ).execute()
+        file = None
+        try:
+            existing_files = drive_service.files().list(
+                q=query,
+                fields='files(id)',
+                supportsAllDrives=True,
+                includeItemsFromAllDrives=True
+            ).execute()
+            
+            if existing_files.get('files'):
+                file_id = existing_files['files'][0]['id']
+                print(f"DEBUG: Found existing file {file_id} with name '{filename}', updating it.")
+                file = drive_service.files().update(
+                    fileId=file_id,
+                    media_body=media,
+                    fields='id, webViewLink',
+                    supportsAllDrives=True
+                ).execute()
+            else:
+                file_metadata = {
+                    'name': filename,
+                    'parents': [folder_id]
+                }
+                file = drive_service.files().create(
+                    body=file_metadata,
+                    media_body=media,
+                    fields='id, webViewLink',
+                    supportsAllDrives=True
+                ).execute()
+        except Exception as e:
+            print(f"Warning: Failed to search for/update existing file ({e}). Proceeding to create new file.")
+            file_metadata = {
+                'name': filename,
+                'parents': [folder_id]
+            }
+            file = drive_service.files().create(
+                body=file_metadata,
+                media_body=media,
+                fields='id, webViewLink',
+                supportsAllDrives=True
+            ).execute()
         
         drive_link = file.get('webViewLink')
         print(f"Successfully uploaded {local_file_path} to Google Drive: {drive_link}")

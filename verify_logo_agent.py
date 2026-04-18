@@ -1,7 +1,7 @@
 import os
 import asyncio
 from google.adk.runners import InMemoryRunner, types
-from sight_logo.agent import sight_logo
+# from sight_logo.agent import sight_logo
 from dotenv import load_dotenv
 
 load_dotenv()

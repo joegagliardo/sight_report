@@ -25,7 +25,7 @@ steps:
       - '--allow-unauthenticated'
       - '--service-account=sight-report-agent@roitraining-dashboard.iam.gserviceaccount.com'
       - '--memory=2Gi'
-      - '--timeout=600'
+      - '--timeout=2000'
       - '--set-env-vars=MODEL=gemini-2.5-flash,LOGO_BUCKET=roitraining-dashboard-grounding,DRIVE_FOLDER_ID=1nZJFalSQBqTUeoyI4HUZRJrQriIl8Cw-,PROJECT_ID=roitraining-dashboard'
       - '--quiet'
 

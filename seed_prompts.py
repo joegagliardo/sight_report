@@ -71,11 +71,11 @@ def seed_prompts():
                 "instructions": CURRENT_INSTRUCTION,
                 "date_entered": datetime.datetime.now(datetime.timezone.utc)
             },
-            {
-                "agent_name": "sight_logo",
-                "instructions": LOGO_INSTRUCTION,
-                "date_entered": datetime.datetime.now(datetime.timezone.utc)
-            }
+            # {
+            #     "agent_name": "sight_logo",
+            #     "instructions": LOGO_INSTRUCTION,
+            #     "date_entered": datetime.datetime.now(datetime.timezone.utc)
+            # }
         ]
         
         for agent_data in agents:
