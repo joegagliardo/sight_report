@@ -5,8 +5,15 @@ import sys
 import argparse
 
 # Load environment variables from .env in the same directory as agent.py
+DEFAULT_MODEL1 = "gemini-3.1-flash-lite"
 env_path = Path(__file__).resolve().parent / ".env"
 load_dotenv(dotenv_path=env_path)
+
+# --- Environment Detection for GCP/Cloud Run or Local Fallback ---
+if os.environ.get("K_SERVICE") or (not os.environ.get("GEMINI_API_KEY") and not os.environ.get("API_KEY")):
+    # Force use of Vertex AI backend instead of Gemini API when no API key is provided.
+    # This prevents the "No API key was provided" error.
+    os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "1"
 
 # Parse authentication flags
 parser = argparse.ArgumentParser(description="Run S.I.G.H.T. Report Agent")
@@ -15,17 +22,27 @@ parser.add_argument("--service", action="store_true", help="Use Service Account 
 # Parse only known args to avoid conflicts with tool/agent internal arguments if any
 args, _ = parser.parse_known_args()
 
+# Set default GCP project ID if not specified
+if not os.environ.get("GOOGLE_CLOUD_PROJECT"):
+    os.environ["GOOGLE_CLOUD_PROJECT"] = "roitraining-dashboard"
+
 # Logic: Default to --user unless --service is specifically requested
 if args.service:
     print("🔐 [AUTH] Mode: SERVICE ACCOUNT")
-    # Normalize Google Credentials path to be absolute
-    if os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
-        creds_path = os.environ["GOOGLE_APPLICATION_CREDENTIALS"]
-        if not os.path.isabs(creds_path):
-            root_dir = Path(__file__).resolve().parent.parent
-            abs_creds_path = str(root_dir / creds_path)
-            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = abs_creds_path
-            print(f"DEBUG: Normalized GOOGLE_APPLICATION_CREDENTIALS to: {abs_creds_path}")
+    creds_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+    if not creds_path:
+        root_dir = Path(__file__).resolve().parent.parent
+        possible_creds = root_dir / "service-account-key.json"
+        if possible_creds.exists():
+            creds_path = str(possible_creds)
+            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = creds_path
+            print(f"DEBUG: Automatically set GOOGLE_APPLICATION_CREDENTIALS to: {creds_path}")
+            
+    if creds_path and not os.path.isabs(creds_path):
+        root_dir = Path(__file__).resolve().parent.parent
+        abs_creds_path = str(root_dir / creds_path)
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = abs_creds_path
+        print(f"DEBUG: Normalized GOOGLE_APPLICATION_CREDENTIALS to: {abs_creds_path}")
 else:
     print("👤 [AUTH] Mode: USER ADC (Default)")
     # Remove the env var if it exists to force fallback to ADC
@@ -122,7 +139,7 @@ Finally, provide a summary with the GCS links AND the Google Drive links for bot
 # Stage 1: Data Retrieval
 bq_agent = Agent(
     name="bq_agent",
-    model=os.environ.get("MODEL", "gemini-2.5-flash"),
+    model=os.environ.get("MODEL", DEFAULT_MODEL1),
     instruction=BQ_INSTRUCTION,
     tools=[fetch_report_pipelines, get_table_schema, run_bigquery_query]
 )
@@ -130,7 +147,7 @@ bq_agent = Agent(
 # Stage 2: Parallel Analysis & Graphic Generation
 body_agent = Agent(
     name="body_agent",
-    model=os.environ.get("MODEL", "gemini-2.5-flash"), 
+    model=os.environ.get("MODEL", DEFAULT_MODEL1), 
     instruction=BODY_INSTRUCTION,
     tools=[
         EnhancedCourseSearchTool(
@@ -142,7 +159,7 @@ body_agent = Agent(
 
 graphic_agent = Agent(
     name="graphic_agent",
-    model=os.environ.get("MODEL", "gemini-2.5-flash"), 
+    model=os.environ.get("MODEL", DEFAULT_MODEL1), 
     instruction=GRAPHIC_INSTRUCTION,
     tools=[generate_trip_infographic],
 )
@@ -155,7 +172,7 @@ parallel_orchestrator = ParallelAgent(
 # Stage 3: Consolidation
 pdf_finalizer = Agent(
     name="pdf_finalizer",
-    model=os.environ.get("MODEL", "gemini-2.5-flash"),
+    model=os.environ.get("MODEL", DEFAULT_MODEL1),
     instruction=FINALIZER_INSTRUCTION,
     tools=[save_report_as_pdf, save_report_as_word, save_to_bucket, create_and_share_google_doc, save_text_report_to_gcs, upload_file_to_drive]
 )

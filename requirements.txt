@@ -8,6 +8,8 @@ google-cloud-bigquery
 google-cloud-firestore
 google-cloud-storage
 google-cloud-aiplatform
+google-cloud-discoveryengine
+google-api-python-client
 pillow
 fpdf2
 python-docx

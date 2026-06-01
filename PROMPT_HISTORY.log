@@ -201,3 +201,70 @@ Timestamp: Mon Apr 13 18:07:18 EDT 2026
 Branch: main
 Prompt: can you modify this code that instead of storing the infographic as last_infographic.png it stores it as CompanyName_infographic_YYYMMDD.png to match the name of the text file. And also tell it to combine the infographic and text file into a PDF with a similar name with the infographic on the first page and the text on the subsequent pages. Do not create the google doc, but leave the code there as an option.
 ---
+
+---
+Timestamp: 2026-05-29T17:06:59+02:00
+Branch: main
+Prompt: this fails with the following message: Error during stream: No API key was provided. Please pass a valid API key. Learn how to create an API key at https://ai.google.dev/gemini-api/docs/api-key.
+---
+Timestamp: 2026-06-01T16:02:52+02:00
+Branch: main
+Prompt: I am trying to save my docx file to a google drive but it passes the parameter value NOT_SET so I get an error
+---
+Timestamp: 2026-06-01T16:45:44+02:00
+Branch: main
+Prompt: Pulling image: gcr.io/google.com/cloudsdktool/cloud-sdk
+Using default tag: latest
+latest: Pulling from google.com/cloudsdktool/cloud-sdk
+5b4d6ff92fc4: Already exists
+0895903aeb08: Pulling fs layer
+79885feee35b: Pulling fs layer
+a38d6c112126: Pulling fs layer
+7c334c8992a8: Pulling fs layer
+129f03f090e6: Pulling fs layer
+129f03f090e6: Verifying Checksum
+129f03f090e6: Download complete
+0895903aeb08: Verifying Checksum
+0895903aeb08: Download complete
+7c334c8992a8: Verifying Checksum
+7c334c8992a8: Download complete
+0895903aeb08: Pull complete
+a38d6c112126: Verifying Checksum
+a38d6c112126: Download complete
+79885feee35b: Verifying Checksum
+79885feee35b: Download complete
+79885feee35b: Pull complete
+a38d6c112126: Pull complete
+7c334c8992a8: Pull complete
+129f03f090e6: Pull complete
+Digest: sha256:6222e33d83298eeb035e1450239b6ddd80ee2a360ed87dd2818448d9227c03b3
+Status: Downloaded newer image for gcr.io/google.com/cloudsdktool/cloud-sdk:latest
+gcr.io/google.com/cloudsdktool/cloud-sdk:latest
+Deploying container to Cloud Run service [sight-report] in project [roitraining-dashboard] region [us-central1]
+Deploying...
+Setting IAM Policy........done
+Creating Revision.......................................................................................................................................................................................................................................................................................................................................................................................................................................................failed
+Deployment failed
+ERROR: (gcloud.run.deploy) The user-provided container failed to start and listen on the port defined provided by the PORT=8080 environment variable within the allocated timeout. This can happen when the container port is misconfigured or if the timeout is too short. The health check timeout can be extended. Logs for this revision might contain more information.
+
+Logs URL: https://console.cloud.google.com/logs/viewer?project=roitraining-dashboard&resource=cloud_run_revision/service_name/sight-report/revision_name/sight-report-00038-dmt&advancedFilter=resource.type%3D%22cloud_run_revision%22%0Aresource.labels.service_name%3D%22sight-report%22%0Aresource.labels.revision_name%3D%22sight-report-00038-dmt%22 
+For more troubleshooting guidance, see https://cloud.google.com/run/docs/troubleshooting#container-failed-to-start
+---
+Timestamp: 2026-06-01T17:01:11+02:00
+Branch: main
+Prompt: Step #2: Creating Revision..............................................................................................................................................................................................................................................................................................................................................................................................................................failed
+Step #2: Deployment failed
+Step #2: ERROR: (gcloud.run.deploy) The user-provided container failed to start and listen on the port defined provided by the PORT=8080 environment variable within the allocated timeout. This can happen when the container port is misconfigured or if the timeout is too short. The health check timeout can be extended. Logs for this revision might contain more information.
+Step #2: 
+Step #2: Logs URL: https://console.cloud.google.com/logs/viewer?project=roitraining-dashboard&resource=cloud_run_revision/service_name/sight-report/revision_name/sight-report-00040-5rt&advancedFilter=resource.type%3D%22cloud_run_revision%22%0Aresource.labels.service_name%3D%22sight-report%22%0Aresource.labels.revision_name%3D%22sight-report-00040-5rt%22 
+Step #2: For more troubleshooting guidance, see https://cloud.google.com/run/docs/troubleshooting#container-failed-to-start
+Finished Step #2
+ERROR
+ERROR: build step 2 "gcr.io/google.com/cloudsdktool/cloud-sdk" failed: step exited with non-zero status: 1
+---------------------------------------------------------------------------------------------------
+
+BUILD FAILURE: Build step failure: build step 2 "gcr.io/google.com/cloudsdktool/cloud-sdk" failed: step exited with non-zero status: 1
+ERROR: (gcloud.builds.submit) build 47dcd12f-a2df-4261-8906-a40733509528 completed with status "FAILURE"
+✅ Build submission complete. Check the Google Cloud Console for real-time logs.
+joey@RebelMax:Dev/sight_repor
+---

@@ -3,14 +3,17 @@ import asyncio
 from flask import Flask, render_template, request, Response, stream_with_context
 from flask_cors import CORS
 
-# --- Environment Detection for GCP/Cloud Run ---
-if os.environ.get("K_SERVICE"):
-    # Force use of Vertex AI backend instead of Gemini API when on Cloud Run.
+# --- Environment Detection for GCP/Cloud Run or Local Fallback ---
+if not os.environ.get("GOOGLE_CLOUD_PROJECT"):
+    os.environ["GOOGLE_CLOUD_PROJECT"] = "roitraining-dashboard"
+
+if os.environ.get("K_SERVICE") or (not os.environ.get("GEMINI_API_KEY") and not os.environ.get("API_KEY")):
+    # Force use of Vertex AI backend instead of Gemini API when no API key is provided.
     # This prevents the "No API key was provided" error.
     os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "1"
 
 from sight_report.agent import sight_agent
-from sight_logo.agent import sight_logo
+# from sight_logo.agent import sight_logo
 from google.adk.runners import InMemoryRunner, types
 from google.adk.events import Event
 import firestore_utils
@@ -45,7 +48,7 @@ def post_prompt():
 # Initialize runners for different agents
 runners = {
     "sight_reader": InMemoryRunner(agent=sight_agent),
-    "sight_logo": InMemoryRunner(agent=sight_logo)
+    # "sight_logo": InMemoryRunner(agent=sight_logo)
 }
 
 @app.route("/")

@@ -17,6 +17,9 @@ from googleapiclient.http import MediaFileUpload
 
 from pyairtable import Api
 
+# Ensure the reports directory exists for output files
+os.makedirs("reports", exist_ok=True)
+
 def process_gcs_manifest_tool(input_json: str) -> List[Any]:
     """
     Parses a manifest of names and GCS paths, and returns multimodal parts for Gemini.
@@ -491,8 +494,9 @@ def create_and_share_google_doc(company_name: str, report_text: str, gcs_image_u
             'name': title,
             'mimeType': 'application/vnd.google-apps.document'
         }
-        if folder_id:
-            doc_metadata['parents'] = [folder_id]
+        has_folder = folder_id and str(folder_id).strip() and str(folder_id).strip().upper() not in ('NOT_SET', 'NONE', '')
+        if has_folder:
+            doc_metadata['parents'] = [folder_id.strip()]
             
         file = drive_service.files().create(
             body=doc_metadata, 
@@ -500,7 +504,7 @@ def create_and_share_google_doc(company_name: str, report_text: str, gcs_image_u
             supportsAllDrives=True
         ).execute()
         doc_id = file.get('id')
-        print(f"Created Google Doc {doc_id} using Drive API" + (f" in folder {folder_id}" if folder_id else ""))
+        print(f"Created Google Doc {doc_id} using Drive API" + (f" in folder {folder_id}" if has_folder else ""))
 
         requests = []
         requests.append({
@@ -725,8 +729,9 @@ def upload_file_to_drive(local_file_path: str, folder_id: str) -> str:
         
         file_metadata = {
             'name': os.path.basename(local_file_path),
-            'parents': [folder_id]
         }
+        if folder_id and str(folder_id).strip() and str(folder_id).strip().upper() not in ('NOT_SET', 'NONE', ''):
+            file_metadata['parents'] = [folder_id.strip()]
         
         # Determine mime type based on extension
         ext = os.path.splitext(local_file_path)[1].lower()
