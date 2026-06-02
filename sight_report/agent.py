@@ -119,16 +119,19 @@ You will receive:
 
 Your MANDATORY tasks are:
 1. Call the `save_report_as_word` tool using the full text analysis and the infographic path.
+   - CRITICAL: The `report_text` argument must ONLY contain the text analysis report from the body_agent. Do NOT include the raw BigQuery JSON data (e.g. the JSON structure with 'company' and 'classes' from the bq_agent) in the report_text.
 2. Call the `save_to_bucket` tool to upload that Word document. The destination path in the bucket should be: reports/CompanyName_TRIP_Report_YYYYMMDD.docx (ensure you use the 'reports/' prefix).
-3. Call the `save_text_report_to_gcs` tool to save the raw text analysis.
+3. Call the `save_text_report_to_gcs` tool to save the raw text analysis (again, ONLY the text analysis from the body_agent, without the raw BigQuery JSON data).
 4. Call the `upload_file_to_drive` tool to upload the Word document to the designated Google Drive folder.
    - Folder ID: '{os.environ.get('DRIVE_FOLDER_ID', 'NOT_SET')}'
 5. Call the `create_and_share_google_doc` tool to create a native Google Doc in the same folder.
    - Folder ID: '{os.environ.get('DRIVE_FOLDER_ID', 'NOT_SET')}'
    - Pass the LOCAL FILE PATH of the infographic (received in input 2) as 'local_image_path'.
+   - The `report_text` argument must ONLY contain the text analysis report from the body_agent without the raw BigQuery JSON data.
 
 OPTIONAL TASKS:
 - Only call `save_report_as_pdf` if the user specifically asked for a PDF in their original request.
+  - The `report_text` argument must ONLY contain the text analysis report from the body_agent without the raw BigQuery JSON data.
 
 DO NOT just summarize. You MUST call the mandatory tools to complete the pipeline.
 Finally, provide a summary with the GCS links AND the Google Drive links for both the Word document and the native Google Doc.

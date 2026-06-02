@@ -20,6 +20,37 @@ from pyairtable import Api
 # Ensure the reports directory exists for output files
 os.makedirs("reports", exist_ok=True)
 
+def clean_report_text(text: str) -> str:
+    """
+    Cleans the report text by removing any leading raw JSON blocks or BigQuery results metadata.
+    """
+    if not text:
+        return text
+    
+    # Strip leading whitespace
+    cleaned = text.strip()
+    
+    # Pattern to match a JSON block (possibly wrapped in markdown ```json ... ```)
+    json_block_pattern = r'^```(?:json)?\s*(\{.*?\})\s*```'
+    match = re.search(json_block_pattern, cleaned, re.DOTALL)
+    if match:
+        block = match.group(0)
+        cleaned = cleaned[len(block):].strip()
+    else:
+        # Try matching raw JSON (starts with { and ends with })
+        raw_json_pattern = r'^(\{.*?\})'
+        match = re.search(raw_json_pattern, cleaned, re.DOTALL)
+        if match:
+            try:
+                json.loads(match.group(1))
+                cleaned = cleaned[len(match.group(1)):].strip()
+            except Exception:
+                pass
+                
+    # Also strip any common labels the agent might output before or after the JSON block
+    cleaned = re.sub(r'^(?:Here is the BigQuery data:|BigQuery results:|BigQuery output:|Raw data:|Survey data:)\s*', '', cleaned, flags=re.IGNORECASE)
+    return cleaned.strip()
+
 def process_gcs_manifest_tool(input_json: str) -> List[Any]:
     """
     Parses a manifest of names and GCS paths, and returns multimodal parts for Gemini.
@@ -372,6 +403,7 @@ def save_report_as_pdf(company_name: str, report_text: str, infographic_path: st
     Layout: Page 1 = Infographic, Page 2+ = Analysis text.
     Returns the local path of the generated PDF.
     """
+    report_text = clean_report_text(report_text)
     try:
         pdf = FPDF()
         
@@ -453,6 +485,7 @@ def create_and_share_google_doc(company_name: str, report_text: str, gcs_image_u
     If folder_id is provided, moves the doc into that folder.
     Prioritizes local_image_path by uploading it and generating a signed URL.
     """
+    report_text = clean_report_text(report_text)
     try:
         scopes = [
             'https://www.googleapis.com/auth/documents', 
@@ -626,6 +659,7 @@ def save_text_report_to_gcs(company_name: str, report_text: str, bucket_name: st
     Saves the raw text report to GCS as a .txt file.
     Naming: reports/Company_body_YYYYMMDD.txt
     """
+    report_text = clean_report_text(report_text)
     try:
         storage_client = storage.Client()
         bucket = storage_client.bucket(bucket_name)
@@ -652,6 +686,7 @@ def save_report_as_word(company_name: str, report_text: str, infographic_path: s
     Layout: Infographic at the top, followed by Analysis text.
     Returns the local path of the generated Word document.
     """
+    report_text = clean_report_text(report_text)
     try:
         doc = docx.Document()
         

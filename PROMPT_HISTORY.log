@@ -268,3 +268,7 @@ ERROR: (gcloud.builds.submit) build 47dcd12f-a2df-4261-8906-a40733509528 complet
 ✅ Build submission complete. Check the Google Cloud Console for real-time logs.
 joey@RebelMax:Dev/sight_repor
 ---
+Timestamp: 2026-06-01T17:18:56+02:00
+Branch: main
+Prompt: when this is generating the PDF it includes the JSON at the top of it. I don't want the JSON of the bigquery results included.
+---
